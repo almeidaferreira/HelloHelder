@@ -43,6 +43,11 @@ body {
 .mat { background: var(--mat); border-radius: 14px; padding: 22px; display: flex; justify-content: center; }
 .mat.zoomed { display: flex; justify-content: flex-start; align-items: flex-start; height: max(320px, calc(100svh - 300px)); overflow: auto; overscroll-behavior: contain; }
 .mat.zoomed #poster { margin: auto; flex: 0 0 auto; max-width: none; min-width: 0; }
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.seg button { border-radius: 0; margin-left: -1px; }
+.seg button:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 8px 8px 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); position: relative; z-index: 1; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { padding: 6px 12px; }
 .zoombar { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
@@ -183,6 +188,14 @@ Calçado</textarea></label>
             <option value="bl">Bottom left</option>
           </select>
         </label>
+        <div role="group" aria-labelledby="alignLbl">
+          <div class="note" id="alignLbl" style="margin-bottom:6px">Text alignment</div>
+          <div class="seg" id="alignSeg">
+            <button type="button" data-align="left" aria-pressed="true">Left</button>
+            <button type="button" data-align="center" aria-pressed="false">Centre</button>
+            <button type="button" data-align="right" aria-pressed="false">Right</button>
+          </div>
+        </div>
         <label>Font
           <select id="fontSel">
             <option value="Hanken Grotesk">Hanken Grotesk</option>
@@ -648,7 +661,7 @@ Calçado</textarea></label>
 
   /* ---------- Poster drawing (units follow the chosen format) ---------- */
   var tx = { headline: "Prémios de\nExcelência e\nInovação", subline: "Cluster do\nCalçado" };
-  var sty = { fmt: "landscape", pos: "tr", hs: 56, ss: 56, font: "Hanken Grotesk", ink: "#2a2a31", bgTop: "#aab5cb", bgBot: "#eceef4", logos: true };
+  var sty = { fmt: "landscape", pos: "tr", hs: 56, ss: 56, align: "left", font: "Hanken Grotesk", ink: "#2a2a31", bgTop: "#aab5cb", bgBot: "#eceef4", logos: true };
   var FORMATS = {
     landscape: { w: 1414, h: 1000, size: 56, maxw: "780px", d: 8.6, poster: true, zoom: 1.35, sx: 0.75, sy: [0.1, 0.1, 0.3], tc: -0.5 },
     portrait: { w: 1000, h: 1414, size: 92, maxw: "520px", d: 10.6, poster: true, zoom: 0.95, sx: 0, sy: [-0.6, 0, 0.55], tc: -0.6 },
@@ -760,8 +773,9 @@ Calçado</textarea></label>
     var x = h === -1 ? MARGIN : (h === 1 ? PW - MARGIN - bw : (PW - bw) / 2);
     var y0 = v === 0 ? MARGIN + 6 : (v === 1 ? PH - MARGIN - logoH - bh : (PH - bh) / 2 - 30);
     ctx.fillStyle = sty.ink; ctx.textBaseline = "alphabetic";
-    ctx.textAlign = h === 0 ? "center" : "left";
-    var tx0 = h === 0 ? PW / 2 : x;
+    var al = sty.align === "right" || sty.align === "center" ? sty.align : "left";
+    ctx.textAlign = al;
+    var tx0 = al === "left" ? x : (al === "right" ? x + bw : x + bw / 2);
     var cy = y0;
     lines.forEach(function (l) {
       var sz = l[2] * k;
@@ -1019,7 +1033,12 @@ Calçado</textarea></label>
   function bindText(id, key, obj) { $(id).addEventListener("input", function (e) { obj[key] = e.target.value; }); }
   bindText("headline", "headline", tx); bindText("subline", "subline", tx);
   bindText("tcol", "ink", sty); bindText("bgTop", "bgTop", sty); bindText("bgBot", "bgBot", sty);
-  $("pos").addEventListener("change", function (e) { sty.pos = e.target.value; shoeDefaults(); relayout(); syncShoeUI(); });
+  function setAlign(a) {
+    sty.align = a === "right" || a === "center" ? a : "left";
+    document.querySelectorAll("#alignSeg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-align") === sty.align)); });
+  }
+  document.querySelectorAll("#alignSeg button").forEach(function (b) { b.addEventListener("click", function () { setAlign(b.getAttribute("data-align")); }); });
+  $("pos").addEventListener("change", function (e) { if (e.target.value === "tc") setAlign("center"); else if (sty.pos === "tc") setAlign("left"); sty.pos = e.target.value; shoeDefaults(); relayout(); syncShoeUI(); });
   $("fmt").addEventListener("change", function (e) { setFormat(e.target.value); });
   $("showLogos").addEventListener("change", function (e) { sty.logos = e.target.checked; });
   $("btnLogos").addEventListener("click", function () { $("logoFiles").click(); });
@@ -1441,7 +1460,7 @@ Calçado</textarea></label>
     return {
       v: 1,
       tx: { headline: tx.headline, subline: tx.subline },
-      sty: { fmt: sty.fmt, pos: sty.pos, hs: sty.hs, ss: sty.ss, font: (BUILTIN_FONTS.indexOf(sty.font) >= 0 || (sty.font === "Custom Upload" && (customFonts[800] || customFonts[300]))) ? sty.font : "Hanken Grotesk", ink: sty.ink, bgTop: sty.bgTop, bgBot: sty.bgBot, logos: sty.logos },
+      sty: { fmt: sty.fmt, pos: sty.pos, align: sty.align, hs: sty.hs, ss: sty.ss, font: (BUILTIN_FONTS.indexOf(sty.font) >= 0 || (sty.font === "Custom Upload" && (customFonts[800] || customFonts[300]))) ? sty.font : "Hanken Grotesk", ink: sty.ink, bgTop: sty.bgTop, bgBot: sty.bgBot, logos: sty.logos },
       st: { speed: st.speed, anim: st.anim, layers: st.layers, wave: st.wave, glow: st.glow, spread: shared.uSpread.value },
       sel: sel, layoutMode: layoutMode,
       x: { size: $("expSize").selectedIndex, fmt: $("expFmt").value, dur: $("vidDur").value, motion: $("vidMotion").value, view: view },
@@ -1527,6 +1546,7 @@ Calçado</textarea></label>
     if (typeof y.logos === "boolean") fire("showLogos", y.logos, "change");
     if (BUILTIN_FONTS.indexOf(y.font) >= 0) fire("fontSel", y.font, "change");
     else if (y.font === "Custom Upload") wantCustomFont = true;
+    setAlign(y.align);
     if (typeof y.pos === "string" && POS[y.pos]) { sty.pos = y.pos; $("pos").value = y.pos; }
     var key = FORMATS[y.fmt] ? y.fmt : "landscape";
     $("fmt").value = key; setFormat(key, true);
