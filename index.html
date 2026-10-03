@@ -113,7 +113,7 @@ dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 400
     <div class="mat"><canvas id="poster" width="1414" height="1000" tabindex="0" aria-label="Poster preview with a rotating 3D shoe. Drag to rotate."></canvas></div>
     <p class="hint">Drag to rotate · scroll to zoom · arrow keys nudge</p>
     <div class="transport">
-      <button type="button" id="btnSpin" class="on">Pause spin</button>
+      <button type="button" id="btnSpin">Spin</button>
       <button type="button" id="btnAnim" class="on">Freeze glow</button>
       <label class="slider"><span class="lh">Rotation <span class="val" id="yawVal">0°</span></span><input type="range" id="yaw" min="0" max="360" step="1" value="0"></label>
       <button type="button" id="btnPin">Pin frame</button>
@@ -224,6 +224,7 @@ Calçado</textarea></label>
         <div class="dlg-actions">
           <button type="button" id="btnObj">Load .obj model</button>
           <button type="button" id="btnReset">Reset model</button>
+          <button type="button" id="btnIntro">Replay one turn</button>
           <input type="file" id="objFile" accept=".obj" hidden>
         </div>
         <p class="note" id="objNote">Sneaker model: "Materials Variants Shoe" by Shopify, CC BY 4.0. Load your own OBJ to wrap the same glowing layers around it (beta, works best with a single closed mesh).</p>
@@ -273,8 +274,10 @@ Calçado</textarea></label>
     { name: "Ember", c: ["#ff4e00", "#ffb000", "#ff2e63", "#7a1fff", "#ffe3a3"] }
   ];
 
+  var REST = -0.2;
+  var intro = null;
   var st = {
-    sx: -0.75, sy: 0.1, yaw: -0.2, pitch: 0.2, zoom: 1.35, spin: !reduce, speed: 0.5, anim: !reduce, time: 0,
+    sx: -0.75, sy: 0.1, yaw: -0.2, pitch: 0.2, zoom: 1.35, spin: false, speed: 0.5, anim: !reduce, time: 0,
     layers: 12, wave: 1, glow: 1, palette: 0, dragging: false
   };
   var frames = [];
@@ -727,7 +730,12 @@ Calçado</textarea></label>
   function frame(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (st.anim) st.time += dt;
-    if (!st.dragging) {
+    if (intro && !st.dragging) {
+      intro.t += dt;
+      var k = Math.min(1, intro.t / intro.dur), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      st.yaw = intro.from + (intro.to - intro.from) * e; vel = 0;
+      if (k >= 1) { st.yaw = intro.to; intro = null; setSpin(false); }
+    } else if (!st.dragging) {
       if (st.spin) st.yaw += st.speed * dt;
       st.yaw += vel * dt; vel *= Math.pow(0.04, dt);
       if (Math.abs(vel) < 0.01) vel = 0;
@@ -743,7 +751,7 @@ Calçado</textarea></label>
   /* ---------- Interaction ---------- */
   var lastX = 0, lastY = 0, lastT = 0;
   poster.addEventListener("pointerdown", function (e) {
-    st.dragging = true; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vel = 0;
+    intro = null; st.dragging = true; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vel = 0;
     try { poster.setPointerCapture(e.pointerId); } catch (err) {}
   });
   poster.addEventListener("pointermove", function (e) {
@@ -849,12 +857,16 @@ Calçado</textarea></label>
   bindRange("wave", "waveVal", function (v) { st.wave = v; shared.uWave.value = v; }, 1);
   bindRange("glow", "glowVal", function (v) { st.glow = v; shared.uGlow.value = v; }, 1);
 
-  function setSpin(on) { st.spin = on; var b = $("btnSpin"); b.textContent = on ? "Pause spin" : "Spin"; b.classList.toggle("on", on); }
+  function playIntro() {
+    if (reduce) { st.yaw = REST; return; }
+    intro = { t: 0, dur: 5, from: REST - 2 * Math.PI, to: REST }; st.yaw = intro.from; setSpin(false);
+  }
+  function setSpin(on) { if (on) intro = null; st.spin = on; var b = $("btnSpin"); b.textContent = on ? "Pause spin" : "Spin"; b.classList.toggle("on", on); }
   function setAnim(on) { st.anim = on; var b = $("btnAnim"); b.textContent = on ? "Freeze glow" : "Animate glow"; b.classList.toggle("on", on); }
   $("btnSpin").addEventListener("click", function () { vel = 0; setSpin(!st.spin); });
   $("btnAnim").addEventListener("click", function () { setAnim(!st.anim); });
   yawEl.addEventListener("input", function (e) {
-    st.yaw = parseFloat(e.target.value) * Math.PI / 180; vel = 0; setSpin(false);
+    intro = null; st.yaw = parseFloat(e.target.value) * Math.PI / 180; vel = 0; setSpin(false);
   });
 
   var sw = $("swatches");
@@ -883,7 +895,7 @@ Calçado</textarea></label>
       x.addEventListener("click", function (e) { e.stopPropagation(); frames.splice(i, 1); renderFrames(); });
       b.appendChild(im); b.appendChild(sp); b.appendChild(x);
       b.addEventListener("click", function () {
-        st.yaw = f.yaw; st.pitch = f.pitch; st.zoom = f.zoom; st.time = f.time; vel = 0; setSpin(false); setAnim(false);
+        intro = null; st.yaw = f.yaw; st.pitch = f.pitch; st.zoom = f.zoom; st.time = f.time; vel = 0; setSpin(false); setAnim(false);
         $("tilt").value = st.pitch; $("tiltVal").textContent = st.pitch.toFixed(2);
         $("zoom").value = st.zoom; $("zoomVal").textContent = st.zoom.toFixed(2);
       });
@@ -924,6 +936,7 @@ Calçado</textarea></label>
   }
   $("modelSel").addEventListener("change", applyModel);
   $("btnReset").addEventListener("click", applyModel);
+  $("btnIntro").addEventListener("click", playIntro);
 
   /* ---------- Export ---------- */
   var dlg = $("exp"), resUrl = null, resBlob = null;
@@ -1000,8 +1013,8 @@ Calçado</textarea></label>
   });
 
   /* ---------- Start ---------- */
-  if (reduce) { setSpin(false); setAnim(false); }
-  applyLayers(); applyPalette(); renderFrames(); setFormat("landscape"); applyModel();
+  if (reduce) { setAnim(false); }
+  applyLayers(); applyPalette(); renderFrames(); setFormat("landscape"); applyModel(); playIntro();
   var fontLoads = ["800 56px 'Hanken Grotesk'", "300 56px 'Hanken Grotesk'", "800 56px Archivo", "300 56px Archivo", "800 56px Outfit", "300 56px Outfit", "800 56px Manrope", "300 56px Manrope", "800 13px 'Hanken Grotesk'", "700 9px 'Hanken Grotesk'"];
   try { if (document.fonts && document.fonts.load) fontLoads.forEach(function (f) { document.fonts.load(f); }); } catch (e) {}
   requestAnimationFrame(frame);
