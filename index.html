@@ -1,7 +1,7 @@
 <title>Shoe Poster Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Gloock&family=Hanken+Grotesk:wght@300;800&family=Outfit:wght@300;800&family=Manrope:wght@300;800&family=Archivo:wght@300;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Hanken+Grotesk:wght@300;800&family=Outfit:wght@300;800&family=Manrope:wght@300;800&family=Archivo:wght@300;800&display=swap">
 <style>
 /* Layout: sticky poster stage on the left, collapsible control groups on the right; stacks on phones. */
 :root {
@@ -15,7 +15,7 @@
   --mat: #e7e3ef;
   --field: #f7f5fa;
   --font-ui: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Gloock", Georgia, serif;
+  --font-display: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -34,11 +34,16 @@ body {
   padding-inline: 16px; padding-block: 14px 40px;
 }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 1280px; margin: 0 auto 14px; }
-.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: -0.01em; }
+.top h1 { font-family: var(--font-display); font-weight: 800; font-size: 26px; margin: 0; letter-spacing: -0.02em; }
 .top p { margin: 0; color: var(--muted); font-size: 13px; }
 .app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; max-width: 1280px; margin: 0 auto; align-items: start; }
 .stage { position: sticky; top: env(safe-area-inset-top, 0px); display: flex; flex-direction: column; gap: 12px; min-width: 0; padding-top: 2px; }
 .mat { background: var(--mat); border-radius: 14px; padding: 22px; display: flex; justify-content: center; }
+.mat.zoomed { display: flex; justify-content: flex-start; align-items: flex-start; height: max(320px, calc(100svh - 300px)); overflow: auto; overscroll-behavior: contain; }
+.mat.zoomed #poster { margin: auto; flex: 0 0 auto; max-width: none; min-width: 0; }
+.zoombar { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.zoombar button { padding: 6px 12px; min-width: 40px; }
+.zoombar .zlabel { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
 #poster {
   display: block; width: min(100%, var(--maxw, 520px), calc((100svh - 330px) * var(--ar, 0.7072))); min-width: 220px; height: auto; aspect-ratio: var(--ar, 0.7072);
   cursor: grab; touch-action: pan-y; box-shadow: 0 18px 50px rgba(30, 10, 60, 0.28); border-radius: 2px; outline-offset: 4px;
@@ -86,7 +91,7 @@ button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accen
 .note { color: var(--muted); font-size: 12px; margin: 0; }
 dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 dialog::backdrop { background: rgba(10, 5, 25, 0.6); }
-dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 400; font-size: 22px; }
+dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
 .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 #result { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 #result img { display: block; max-width: 100%; max-height: 52vh; width: auto; height: auto; margin: 0 auto; border-radius: 4px; border: 1px solid var(--line); }
@@ -111,7 +116,14 @@ dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 400
 <main class="app">
   <section class="stage" aria-label="Poster preview">
     <div class="mat"><canvas id="poster" width="1414" height="1000" tabindex="0" aria-label="Poster preview with a rotating 3D shoe. Drag to rotate."></canvas></div>
-    <p class="hint">Drag to rotate · scroll to zoom · arrow keys nudge</p>
+    <div class="zoombar" role="group" aria-label="Canvas view zoom">
+      <button type="button" id="vzOut" aria-label="Zoom canvas out">−</button>
+      <span class="zlabel" id="vzLabel">Fit</span>
+      <button type="button" id="vzIn" aria-label="Zoom canvas in">+</button>
+      <button type="button" id="vzFit">Fit</button>
+      <button type="button" id="vz100">100%</button>
+    </div>
+    <p class="hint">Drag to rotate · scroll to resize the shoe · Ctrl or ⌘ + scroll to zoom the canvas</p>
     <div class="transport">
       <button type="button" id="btnSpin">Spin</button>
       <button type="button" id="btnAnim" class="on">Freeze glow</button>
@@ -685,7 +697,7 @@ Calçado</textarea></label>
     poster.style.setProperty("--ar", String(PW / PH)); poster.style.setProperty("--maxw", f.maxw);
     sty.hs = sty.ss = f.size; $("hs").value = $("ss").value = f.size; $("hsVal").textContent = $("ssVal").textContent = String(f.size);
     st.zoom = f.zoom; $("zoom").value = f.zoom; $("zoomVal").textContent = f.zoom.toFixed(2);
-    shoeDefaults(); buildExportOptions();
+    shoeDefaults(); buildExportOptions(); if (view !== null) applyView();
   }
 
   function buildExportOptions() {
@@ -709,6 +721,43 @@ Calçado</textarea></label>
     var h = hex.replace("#", ""); if (h.length === 3) h = h.replace(/(.)/g, "$1$1");
     return "rgba(" + parseInt(h.slice(0, 2), 16) + "," + parseInt(h.slice(2, 4), 16) + "," + parseInt(h.slice(4, 6), 16) + "," + a + ")";
   }
+
+  /* ---------- Canvas view zoom ---------- */
+  var VSTEPS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3];
+  var view = null; // null = fit, otherwise css px per canvas px
+  function applyView() {
+    var mat = poster.parentNode;
+    if (view === null) {
+      poster.style.width = ""; mat.classList.remove("zoomed");
+      $("vzLabel").textContent = "Fit";
+    } else {
+      mat.classList.add("zoomed"); poster.style.width = Math.round(PW * view) + "px";
+      $("vzLabel").textContent = Math.round(view * 100) + "%";
+    }
+    $("vzFit").classList.toggle("on", view === null); $("vz100").classList.toggle("on", view === 1);
+  }
+  function currentScale() { return poster.getBoundingClientRect().width / PW; }
+  function stepView(dir) {
+    var cur = view === null ? currentScale() : view, next = cur, i;
+    if (dir > 0) { for (i = 0; i < VSTEPS.length; i++) if (VSTEPS[i] > cur + 0.01) { next = VSTEPS[i]; break; } if (next === cur) next = VSTEPS[VSTEPS.length - 1]; }
+    else { for (i = VSTEPS.length - 1; i >= 0; i--) if (VSTEPS[i] < cur - 0.01) { next = VSTEPS[i]; break; } if (next === cur) next = VSTEPS[0]; }
+    setView(next);
+  }
+  function setView(v) {
+    var mat = poster.parentNode, wasFit = view === null;
+    // keep the visible centre steady while zooming
+    var cx = (mat.scrollLeft + mat.clientWidth / 2) / (poster.getBoundingClientRect().width + 1), cy = (mat.scrollTop + mat.clientHeight / 2) / (poster.getBoundingClientRect().height + 1);
+    view = v; applyView();
+    if (v !== null) {
+      if (wasFit) { cx = 0.5; cy = 0.5; }
+      mat.scrollLeft = cx * poster.getBoundingClientRect().width - mat.clientWidth / 2;
+      mat.scrollTop = cy * poster.getBoundingClientRect().height - mat.clientHeight / 2;
+    }
+  }
+  $("vzIn").addEventListener("click", function () { stepView(1); });
+  $("vzOut").addEventListener("click", function () { stepView(-1); });
+  $("vzFit").addEventListener("click", function () { setView(null); });
+  $("vz100").addEventListener("click", function () { setView(1); });
 
   /* ---------- Frame loop ---------- */
   var poster = $("poster"), pctx = poster.getContext("2d");
@@ -767,6 +816,7 @@ Calçado</textarea></label>
   poster.addEventListener("pointerup", endDrag);
   poster.addEventListener("pointercancel", endDrag);
   poster.addEventListener("wheel", function (e) {
+    if (e.ctrlKey || e.metaKey) { e.preventDefault(); stepView(e.deltaY < 0 ? 1 : -1); return; }
     e.preventDefault();
     st.zoom = Math.max(0.3, Math.min(3, st.zoom * (e.deltaY > 0 ? 0.96 : 1.04)));
     $("zoom").value = st.zoom; $("zoomVal").textContent = st.zoom.toFixed(2);
