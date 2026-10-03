@@ -159,9 +159,16 @@ Calçado</textarea></label>
       <div class="fields">
         <label>Format
           <select id="fmt">
-            <option value="landscape">Landscape (A-series ratio)</option>
-            <option value="portrait">Portrait (A-series ratio)</option>
-            <option value="square">Square</option>
+            <optgroup label="Poster">
+              <option value="landscape">Poster landscape (A-series)</option>
+              <option value="portrait">Poster portrait (A-series)</option>
+            </optgroup>
+            <optgroup label="Social">
+              <option value="s916">Story / Reel 9:16 (1080 × 1920)</option>
+              <option value="s169">Landscape 16:9 (1920 × 1080)</option>
+              <option value="s45">Portrait 4:5 (1080 × 1350)</option>
+              <option value="s11">Square 1:1 (1080 × 1080)</option>
+            </optgroup>
           </select>
         </label>
         <div class="grid3">
@@ -513,9 +520,12 @@ Calçado</textarea></label>
   var tx = { headline: "Prémios de\nExcelência e\nInovação", subline: "Cluster do\nCalçado" };
   var sty = { fmt: "landscape", pos: "tr", hs: 56, ss: 56, font: "Hanken Grotesk", ink: "#2a2a31", bgTop: "#aab5cb", bgBot: "#eceef4", logos: true };
   var FORMATS = {
-    landscape: { w: 1414, h: 1000, size: 56, maxw: "780px", d: 8.6 },
-    portrait: { w: 1000, h: 1414, size: 92, maxw: "520px", d: 10.6 },
-    square: { w: 1000, h: 1000, size: 66, maxw: "640px", d: 9.4 }
+    landscape: { w: 1414, h: 1000, size: 56, maxw: "780px", d: 8.6, poster: true, zoom: 1.35, sx: 0.75, sy: [0.1, 0.1, 0.3], tc: -0.5 },
+    portrait: { w: 1000, h: 1414, size: 92, maxw: "520px", d: 10.6, poster: true, zoom: 0.95, sx: 0, sy: [-0.6, 0, 0.55], tc: -0.6 },
+    s916: { w: 1080, h: 1920, size: 104, maxw: "420px", d: 13.3, zoom: 1.0, sx: 0, sy: [-0.9, 0, 0.8], tc: -0.9 },
+    s169: { w: 1920, h: 1080, size: 66, maxw: "840px", d: 6.9, zoom: 1.0, sx: 0.8, sy: [0.1, 0.1, 0.3], tc: -0.45 },
+    s45: { w: 1080, h: 1350, size: 96, maxw: "540px", d: 9.4, zoom: 0.95, sx: 0, sy: [-0.6, 0, 0.5], tc: -0.6 },
+    s11: { w: 1080, h: 1080, size: 76, maxw: "620px", d: 8.4, zoom: 0.9, sx: 0, sy: [-0.5, 0, 0.45], tc: -0.5 }
   };
   var POS = { tr: [1, 0], tl: [-1, 0], tc: [0, 0], mr: [1, 0.5], ml: [-1, 0.5], br: [1, 1], bl: [-1, 1] };
   var userLogos = [];
@@ -525,17 +535,14 @@ Calçado</textarea></label>
   function setLS(ctx, px) { if ("letterSpacing" in ctx) ctx.letterSpacing = px + "px"; }
 
   function shoeDefaults() {
-    var p = POS[sty.pos], h = p[0], v = p[1];
-    if (sty.fmt === "landscape") {
-      st.sx = -h * 0.75; st.sy = h === 0 ? -0.5 : (v === 1 ? 0.3 : 0.1);
-    } else {
-      st.sx = 0; st.sy = v === 0 ? -0.6 : (v === 1 ? 0.55 : 0);
-    }
+    var f = FORMATS[sty.fmt], p = POS[sty.pos], h = p[0], v = p[1];
+    st.sx = f.sx ? -h * f.sx : 0;
+    st.sy = h === 0 ? f.tc : f.sy[v === 0 ? 0 : (v === 1 ? 2 : 1)];
     $("sx").value = st.sx; $("sxVal").textContent = st.sx.toFixed(2);
     $("sy").value = st.sy; $("syVal").textContent = st.sy.toFixed(2);
   }
 
-  function logoScale() { return Math.min(1.15, (PW - 2 * MARGIN) / 1000); }
+  function logoScale() { return Math.min(1.15 * Math.min(PW, PH) / 1000, (PW - 2 * MARGIN) / 1000); }
 
   function drawPlaceholderLogos(ctx, tw) {
     var INK = "#17141d";
@@ -660,21 +667,23 @@ Calçado</textarea></label>
   }
 
   function setFormat(key) {
-    var f = FORMATS[key]; sty.fmt = key; PW = f.w; PH = f.h;
+    var f = FORMATS[key]; sty.fmt = key; PW = f.w; PH = f.h; MARGIN = 60 * Math.min(PW, PH) / 1000;
     renderer.setSize(PW, PH, false);
     camera.aspect = PW / PH; camera.position.z = f.d; camera.updateProjectionMatrix();
     poster.width = PW; poster.height = PH;
     poster.style.setProperty("--ar", String(PW / PH)); poster.style.setProperty("--maxw", f.maxw);
     sty.hs = sty.ss = f.size; $("hs").value = $("ss").value = f.size; $("hsVal").textContent = $("ssVal").textContent = String(f.size);
+    st.zoom = f.zoom; $("zoom").value = f.zoom; $("zoomVal").textContent = f.zoom.toFixed(2);
     shoeDefaults(); buildExportOptions();
   }
 
   function buildExportOptions() {
-    var L = Math.max(PW, PH), sel = $("expSize"), sqr = PW === PH;
-    var opts = [
+    var L = Math.max(PW, PH), sel = $("expSize"), isPoster = !!FORMATS[sty.fmt].poster;
+    var opts = isPoster ? [
       [1, "Screen", 96], [2, "Social 2x", 96],
-      [(sqr ? 2480 : 3508) / L, sqr ? "Print 21 cm at 300 dpi" : "Print A4 at 300 dpi", 300],
-      [(sqr ? 3508 : 4961) / L, sqr ? "Print 30 cm at 300 dpi" : "Print A3 at 300 dpi", 300]
+      [3508 / L, "Print A4 at 300 dpi", 300], [4961 / L, "Print A3 at 300 dpi", 300]
+    ] : [
+      [1, "Platform native", 96], [2, "2x for crisp scaling", 96]
     ];
     sel.textContent = "";
     opts.forEach(function (o) {
