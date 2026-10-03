@@ -15,18 +15,19 @@
   --mat: #e7e3ef;
   --field: #f7f5fa;
   --ctl-h: 38px;
+  --danger: #b3261e;
   --font-ui: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #121018; --panel: #1b1824; --fg: #efeaf8; --muted: #a49bba; --line: #332e44;
-    --accent: #b794ff; --accent-fg: #170f2a; --mat: #0c0a11; --field: #252132; color-scheme: dark;
+    --accent: #b794ff; --accent-fg: #170f2a; --mat: #0c0a11; --field: #252132; --danger: #d4574c; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #121018; --panel: #1b1824; --fg: #efeaf8; --muted: #a49bba; --line: #332e44;
-  --accent: #b794ff; --accent-fg: #170f2a; --mat: #0c0a11; --field: #252132; color-scheme: dark;
+  --accent: #b794ff; --accent-fg: #170f2a; --mat: #0c0a11; --field: #252132; --danger: #d4574c; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
@@ -100,17 +101,30 @@ button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accen
 .frame .x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 9px; background: rgba(20, 10, 40, 0.72); color: #fff; font-size: 12px; line-height: 18px; text-align: center; padding: 0; bottom: auto; left: auto; }
 .note { color: var(--muted); font-size: 12px; margin: 0; }
 [hidden] { display: none !important; }
-dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(1120px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 dialog::backdrop { background: rgba(10, 5, 25, 0.6); }
 dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
 .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-#result { display: flex; flex-direction: column; gap: 10px; }
-.exp-body { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; align-items: start; }
-.exp-settings { padding: 0; min-width: 0; }
-.exp-preview { align-items: center; justify-content: center; min-height: 240px; min-width: 0; background: var(--mat); border-radius: 10px; padding: 14px; }
-.exp-preview .note { text-align: center; }
-@media (max-width: 760px) { .exp-body { grid-template-columns: minmax(0, 1fr); } }
-#result img, #result video { display: block; max-width: 100%; max-height: calc(100vh - 150px); width: auto; height: auto; margin: 0 auto; border-radius: 4px; border: 1px solid var(--line); }
+button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+button.ghost { background: transparent; color: var(--muted); }
+.reset-row { display: flex; justify-content: center; padding-top: 6px; }
+/* full page export view */
+dialog#exp { width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; padding: 0; overflow: hidden; }
+dialog#exp[open] { display: flex; flex-direction: column; }
+.exp-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); margin: 0; }
+.exp-head h2 { margin: 0; }
+.exp-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 340px minmax(0, 1fr); }
+.exp-settings { padding: 20px; min-width: 0; overflow: auto; border-right: 1px solid var(--line); align-content: start; }
+.exp-preview { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; background: var(--mat); padding: 24px; overflow: hidden; }
+.exp-frame { position: relative; flex: 0 0 auto; background: var(--panel); box-shadow: 0 18px 50px rgba(30, 10, 60, 0.28); border-radius: 2px; overflow: hidden; }
+.exp-frame canvas, .exp-frame img, .exp-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+.exp-frame canvas { background: transparent; }
+.exp-busy { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; background: rgba(15, 8, 30, 0.55); color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  dialog#exp[open] { overflow: auto; }
+  .exp-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(60vh, 1fr); }
+  .exp-settings { border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
+}
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .stage { position: static; }
@@ -126,10 +140,7 @@ dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 800
     <h1>Shoe Poster Studio</h1>
     <p id="hdrNote">Spin the shoe, pin a frame, edit the layout, export the poster. Changes save automatically in this browser.</p>
   </div>
-  <div class="dlg-actions">
-    <button id="btnResetAll" type="button" title="Forget the saved settings and start again">Reset settings</button>
-    <button class="primary" id="openExport" type="button">Export poster</button>
-  </div>
+  <button class="primary" id="openExport" type="button">Export poster</button>
 </header>
 
 <main class="app">
@@ -275,8 +286,18 @@ Calçado</textarea></label>
         <p class="note" id="objNote">Sneaker model: "Materials Variants Shoe" by Shopify, CC BY 4.0. Load your own OBJ to wrap the same glowing layers around it (beta, works best with a single closed mesh).</p>
       </div>
     </details>
+    <div class="reset-row"><button class="ghost" id="btnResetAll" type="button">Reset all settings…</button></div>
   </aside>
 </main>
+
+<dialog id="rst" aria-labelledby="rstTitle">
+  <h2 id="rstTitle">Reset all settings?</h2>
+  <p class="note" style="margin:0 0 16px">This clears the text, colours, format, shoes, pinned frames, uploaded logos and fonts saved in this browser, and starts again from the defaults. It cannot be undone.</p>
+  <div class="dlg-actions" style="justify-content:flex-end">
+    <button type="button" id="rstCancel" autofocus>Cancel</button>
+    <button type="button" class="danger" id="rstOk">Reset everything</button>
+  </div>
+</dialog>
 
 <dialog id="exp" aria-labelledby="expTitle">
   <div class="exp-head">
@@ -314,9 +335,12 @@ Calçado</textarea></label>
       </div>
     </div>
     <div id="result" class="exp-preview">
-      <p class="note" id="resEmpty">Your export appears here once it is rendered.</p>
-      <img id="resImg" alt="Exported poster" hidden>
-      <video id="resVid" controls loop muted playsinline hidden></video>
+      <div class="exp-frame" id="expFrame">
+        <canvas id="expPrev" aria-label="Preview of the poster to export"></canvas>
+        <img id="resImg" alt="Exported poster" hidden>
+        <video id="resVid" controls loop muted playsinline hidden></video>
+        <div class="exp-busy" id="expBusy" hidden><span id="expBusyText">Rendering…</span></div>
+      </div>
     </div>
   </div>
 </dialog>
@@ -1233,10 +1257,33 @@ Calçado</textarea></label>
 
   /* ---------- Export ---------- */
   var dlg = $("exp"), resUrl = null, resBlob = null;
+  function fitFrame() {
+    var st2 = $("result"), fr = $("expFrame"), cw = st2.clientWidth - 48, ch = st2.clientHeight - 48, ar = PW / PH;
+    if (cw <= 0 || ch <= 0) return;
+    var w = Math.min(cw, ch * ar), h = w / ar;
+    fr.style.width = Math.floor(w) + "px"; fr.style.height = Math.floor(h) + "px";
+  }
+  function resetResult() {
+    if (!$("expPrev")) return;
+    $("resImg").hidden = true; $("resVid").hidden = true; try { $("resVid").pause(); } catch (e) {}
+    $("expPrev").hidden = false; $("resActions").hidden = true; $("expStatus").textContent = "";
+  }
+  function loadPreview() {
+    var c = $("expPrev"); c.width = PW; c.height = PH;
+    hl = null; renderScene(); pctx.setTransform(1, 0, 0, 1, 0, 0); drawPoster(pctx);
+    c.getContext("2d").drawImage(poster, 0, 0, PW, PH);
+  }
   $("openExport").addEventListener("click", function () {
     exportCancel = false;
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", "");
+    resetResult(); loadPreview(); fitFrame();
+    requestAnimationFrame(fitFrame);
   });
+  window.addEventListener("resize", function () { if (dlg.open) fitFrame(); });
+  ["expSize", "expFmt", "vidDur", "vidMotion"].forEach(function (id) { $(id).addEventListener("change", resetResult); });
+  // overlay mirrors the status text while a render is running
+  new MutationObserver(function () { $("expBusyText").textContent = $("expStatus").textContent; }).observe($("expStatus"), { childList: true, characterData: true, subtree: true });
+  new MutationObserver(function () { $("expBusy").hidden = !$("expGo").disabled; }).observe($("expGo"), { attributes: true, attributeFilter: ["disabled"] });
   $("expFmt").addEventListener("change", updateExportUI);
   var exportCancel = false;
   function closeExport() { exportCancel = true; try { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); } catch (e) { dlg.removeAttribute("open"); } }
@@ -1297,7 +1344,7 @@ Calçado</textarea></label>
             resBlob = b2; resUrl = URL.createObjectURL(b2);
             $("resImg").src = resUrl; $("resImg").hidden = false;
             var a = $("resDl"); a.href = resUrl; a.download = "poster-" + w + "x" + h + "." + fmt;
-            $("resEmpty").hidden = true; $("resActions").hidden = false;
+            $("expPrev").hidden = true; $("resActions").hidden = false;
             status.textContent = w + " × " + h + " px · " + (b2.size / 1048576).toFixed(1) + " MB";
             $("expGo").disabled = false;
           });
@@ -1368,7 +1415,7 @@ Calçado</textarea></label>
           resBlob = blob; resUrl = URL.createObjectURL(blob);
           var v = $("resVid"); v.src = resUrl; v.hidden = false; $("resImg").hidden = true; $("resCopy").hidden = true; v.play().catch(function () {});
           var a = $("resDl"); a.href = resUrl; a.download = "poster-" + w + "x" + h + ".mp4";
-          $("resEmpty").hidden = true; $("resActions").hidden = false;
+          $("expPrev").hidden = true; $("resActions").hidden = false;
           status.textContent = w + " × " + h + " · " + secs + " s · " + (blob.size / 1048576).toFixed(1) + " MB" + (pc.mux === "avc" ? "" : " (" + pc.mux.toUpperCase() + " in an MP4 wrapper)");
         }).catch(function (e) { restore(); status.textContent = "Video export failed: " + e.message; });
       }
@@ -1511,7 +1558,10 @@ Calçado</textarea></label>
     try { var raw = localStorage.getItem(STORE_KEY); if (!raw) return false; lastSaved = raw; return restoreSettings(JSON.parse(raw)); }
     catch (e) { return false; }
   }
-  $("btnResetAll").addEventListener("click", function () {
+  var rst = $("rst");
+  $("btnResetAll").addEventListener("click", function () { if (rst.showModal) rst.showModal(); else rst.setAttribute("open", ""); });
+  $("rstCancel").addEventListener("click", function () { if (rst.close) rst.close(); else rst.removeAttribute("open"); });
+  $("rstOk").addEventListener("click", function () {
     try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(EXTRA_KEY); } catch (e) {}
     skipSave = true;
     try { window.location.reload(); } catch (e) { skipSave = false; }
