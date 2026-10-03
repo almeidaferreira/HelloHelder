@@ -868,6 +868,32 @@ Calçado</textarea></label>
     if (document.activeElement !== yawEl) yawEl.value = Math.round(deg);
   }
 
+  /* a one second outline on the selected shoe; drawn on the preview only, never in exports */
+  var hl = null;
+  function highlightShoe(sh) { hl = { sh: sh, t0: performance.now() }; }
+  function rrect(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function drawHighlight(ctx) {
+    if (!hl) return;
+    var age = (performance.now() - hl.t0) / 1000, idx = shoes.indexOf(hl.sh);
+    if (age >= 1 || idx < 0) { hl = null; return; }
+    var a = age < 0.6 ? 1 : 1 - (age - 0.6) / 0.4, sh = hl.sh, sc = shoeScreen(sh), z = sh.zoom * sc.pxPerUnit, u = Math.min(PW, PH) / 1000;
+    var c = Math.abs(Math.cos(sh.yaw)), sn = Math.abs(Math.sin(sh.yaw));
+    var w = (3.5 * c + 1.5 * sn) * z + 48 * u, h = (1.9 + 0.4 * sn) * z + 48 * u, pulse = 1 + 0.025 * Math.sin(age * 16);
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(sc.x, sc.y); ctx.scale(pulse, pulse);
+    rrect(ctx, -w / 2, -h / 2, w, h, 28 * u);
+    ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = 10 * u; ctx.setLineDash([]); ctx.stroke();
+    ctx.strokeStyle = "#5b2a96"; ctx.lineWidth = 4 * u; ctx.setLineDash([18 * u, 12 * u]); ctx.stroke(); ctx.setLineDash([]);
+    var label = "Shoe " + (idx + 1), fs = 22 * u;
+    ctx.font = "800 " + fs + "px 'DM Sans', system-ui, sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    var tw = ctx.measureText(label).width + 24 * u, th = fs + 16 * u;
+    rrect(ctx, -w / 2, -h / 2 - th - 6 * u, tw, th, 10 * u); ctx.fillStyle = "#5b2a96"; ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.fillText(label, -w / 2 + 12 * u, -h / 2 - th / 2 - 6 * u);
+    ctx.restore();
+  }
+
   var exporting = false;
   function frame(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -892,6 +918,7 @@ Calçado</textarea></label>
     renderScene();
     pctx.setTransform(1, 0, 0, 1, 0, 0);
     drawPoster(pctx);
+    drawHighlight(pctx);
     updateYawUI();
     requestAnimationFrame(frame);
   }
@@ -1071,7 +1098,10 @@ Calçado</textarea></label>
     $("modelSel").value = cur().model;
     applyPalette(); renderChips();
   }
-  function selectShoe(i) { sel = Math.max(0, Math.min(shoes.length - 1, i)); vel = 0; syncShoeUI(); }
+  function selectShoe(i, quiet) {
+    sel = Math.max(0, Math.min(shoes.length - 1, i)); vel = 0; syncShoeUI();
+    if (!quiet && shoes.length > 1) highlightShoe(cur());
+  }
   function addShoe(quiet) {
     if (shoes.length >= MAXSHOES) return null;
     layoutMode = null;
@@ -1108,7 +1138,7 @@ Calçado</textarea></label>
   $("btnTrio").addEventListener("click", function () {
     while (shoes.length > 3) removeShoe(shoes.length - 1);
     while (shoes.length < 3) addShoe(true);
-    layoutMode = "trio"; trioLayout(); selectShoe(0);
+    layoutMode = "trio"; trioLayout(); selectShoe(0, true);
   });
 
   /* pinned frames */
@@ -1144,6 +1174,7 @@ Calçado</textarea></label>
   }
   $("btnPin").addEventListener("click", function () {
     var t = document.createElement("canvas"); t.width = 156; t.height = Math.round(156 * PH / PW);
+    hl = null; renderScene(); pctx.setTransform(1, 0, 0, 1, 0, 0); drawPoster(pctx);
     t.getContext("2d").drawImage(poster, 0, 0, t.width, t.height);
     var deg = Math.round(((st.yaw * 180 / Math.PI) % 360 + 360) % 360);
     frames.push({ shoes: shoes.map(function (sh) { return { yaw: sh.yaw, pitch: sh.pitch, zoom: sh.zoom, sx: sh.sx, sy: sh.sy, palette: sh.palette, model: sh.model }; }), time: st.time, deg: deg, thumb: t.toDataURL("image/jpeg", 0.75) });
