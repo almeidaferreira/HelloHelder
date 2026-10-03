@@ -149,6 +149,13 @@ Calçado</textarea></label>
             <option value="Manrope">Manrope</option>
           </select>
         </label>
+        <div class="dlg-actions">
+          <button type="button" id="btnFontB">Custom font: bold</button>
+          <button type="button" id="btnFontL">Custom font: light</button>
+          <input type="file" id="fontFileB" accept=".ttf,.otf,.woff,.woff2" hidden>
+          <input type="file" id="fontFileL" accept=".ttf,.otf,.woff,.woff2" hidden>
+        </div>
+        <p class="note" id="fontNote">Upload a TTF, OTF, WOFF or WOFF2 file for the headline (bold) and another for the subline (light). One file is used for both. Fonts stay in your browser only.</p>
         <label><span class="lh">Headline size <span class="val" id="hsVal">56</span></span><input type="range" id="hs" min="16" max="320" step="1" value="56"></label>
         <label><span class="lh">Subline size <span class="val" id="ssVal">56</span></span><input type="range" id="ss" min="16" max="320" step="1" value="56"></label>
       </div>
@@ -530,6 +537,7 @@ Calçado</textarea></label>
   var POS = { tr: [1, 0], tl: [-1, 0], tc: [0, 0], mr: [1, 0.5], ml: [-1, 0.5], br: [1, 1], bl: [-1, 1] };
   var userLogos = [];
   var MARGIN = 60;
+  var LOGO_FONT = "'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif";
   function fontStack() { return "'" + sty.font + "', 'Helvetica Neue', Arial, sans-serif"; }
 
   function setLS(ctx, px) { if ("letterSpacing" in ctx) ctx.letterSpacing = px + "px"; }
@@ -553,10 +561,10 @@ Calçado</textarea></label>
       ctx.beginPath(); ctx.rect(p[0] + 2, p[1] + 2, 15, 15); ctx.stroke();
       if (i === 0 || i === 3) ctx.fillRect(p[0] + 6, p[1] + 6, 7, 7);
     });
-    ["CENTRO", "TECNOLÓGICO DO", "CALÇADO DE", "PORTUGAL"].forEach(function (l, i) { t(l, 52, 13 + i * 10, "700 8px " + fontStack(), "left", 0.3); });
+    ["CENTRO", "TECNOLÓGICO DO", "CALÇADO DE", "PORTUGAL"].forEach(function (l, i) { t(l, 52, 13 + i * 10, "700 8px " + LOGO_FONT, "left", 0.3); });
     // Portugal Footwear
     ctx.strokeRect(196, 2, 50, 42);
-    t("PORTUGAL", 221, 20, "800 8px " + fontStack(), "center", 0.4); t("FOOTWEAR", 221, 31, "800 8px " + fontStack(), "center", 0.4);
+    t("PORTUGAL", 221, 20, "800 8px " + LOGO_FONT, "center", 0.4); t("FOOTWEAR", 221, 31, "800 8px " + LOGO_FONT, "center", 0.4);
     // right group, laid out from the right edge
     var x = tw;
     // EU
@@ -565,23 +573,23 @@ Calçado</textarea></label>
     ctx.fillStyle = "#ffd617";
     for (var k = 0; k < 12; k++) { var a = k / 12 * Math.PI * 2; ctx.beginPath(); ctx.arc(ex + 23 + Math.cos(a) * 10, 23.5 + Math.sin(a) * 10, 1.5, 0, 7); ctx.fill(); }
     ctx.fillStyle = INK;
-    t("Cofinanciado pela", ex + 54, 22, "700 9px " + fontStack(), "left", 0); t("União Europeia", ex + 54, 34, "700 9px " + fontStack(), "left", 0);
+    t("Cofinanciado pela", ex + 54, 22, "700 9px " + LOGO_FONT, "left", 0); t("União Europeia", ex + 54, 34, "700 9px " + LOGO_FONT, "left", 0);
     // Portugal 2030
     var px = ex - 30 - 108;
     ctx.fillStyle = INK;
     [0, 9, 18].forEach(function (o) { ctx.beginPath(); ctx.moveTo(px + o + 4, 12); ctx.lineTo(px + o + 9, 12); ctx.lineTo(px + o + 3, 40); ctx.lineTo(px + o - 2, 40); ctx.closePath(); ctx.fill(); });
-    t("PORTUGAL", px + 34, 14, "700 8px " + fontStack(), "left", 0.5);
-    t("2030", px + 32, 40, "800 31px " + fontStack(), "left", -1);
+    t("PORTUGAL", px + 34, 14, "700 8px " + LOGO_FONT, "left", 0.5);
+    t("2030", px + 32, 40, "800 31px " + LOGO_FONT, "left", -1);
     // COMPETE 2030
     var cx = px - 30 - 118;
-    t("COMPETE", cx, 28, "800 26px " + fontStack(), "left", 0.5);
-    t("2030", cx + 118, 41, "700 9px " + fontStack(), "right", 1);
+    t("COMPETE", cx, 28, "800 26px " + LOGO_FONT, "left", 0.5);
+    t("2030", cx + 118, 41, "700 9px " + LOGO_FONT, "right", 1);
     // knowledge in motion
     var kx = cx - 30 - 118;
     ctx.beginPath(); ctx.arc(kx + 12, 24, 12, 0, 7); ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(kx + 6, 24); ctx.lineTo(kx + 18, 24); ctx.moveTo(kx + 14, 19); ctx.lineTo(kx + 19, 24); ctx.lineTo(kx + 14, 29); ctx.stroke();
     ctx.fillStyle = INK;
-    t("knowledge", kx + 32, 22, "800 13px " + fontStack(), "left", -0.2); t("in motion", kx + 32, 36, "800 13px " + fontStack(), "left", -0.2);
+    t("knowledge", kx + 32, 22, "800 13px " + LOGO_FONT, "left", -0.2); t("in motion", kx + 32, 36, "800 13px " + LOGO_FONT, "left", -0.2);
   }
 
   function drawLogos(ctx) {
@@ -801,6 +809,35 @@ Calçado</textarea></label>
   }
   bindRange("hs", "hsVal", function (v) { sty.hs = v; }, 0);
   bindRange("ss", "ssVal", function (v) { sty.ss = v; }, 0);
+  var customFonts = { 800: null, 300: null };
+  function loadCustomFont(weight, file) {
+    if (!file) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      var buf = rd.result;
+      var jobs = [];
+      customFonts[weight] = { buf: buf, name: file.name };
+      var other = weight === 800 ? 300 : 800;
+      // a single file covers both weights until the other one is supplied
+      [weight].concat(customFonts[other] ? [] : [other]).forEach(function (w) {
+        var face = new FontFace("Custom Upload", buf.slice(0), { weight: String(w) });
+        jobs.push(face.load().then(function (f) { document.fonts.add(f); }));
+      });
+      Promise.all(jobs).then(function () {
+        var sel = $("fontSel");
+        if (!sel.querySelector('option[value="Custom Upload"]')) {
+          var op = document.createElement("option"); op.value = "Custom Upload"; op.textContent = "Custom upload"; sel.appendChild(op);
+        }
+        sel.value = "Custom Upload"; sty.font = "Custom Upload";
+        $("fontNote").textContent = "Using " + file.name + " for " + (weight === 800 ? "bold" : "light") + (customFonts[other] ? ", and " + customFonts[other].name + " for " + (weight === 800 ? "light" : "bold") + "." : " (also used for the other weight until you add a second file).");
+      }).catch(function () { $("fontNote").textContent = "That file could not be read as a font. Try a TTF, OTF, WOFF or WOFF2 file."; });
+    };
+    rd.readAsArrayBuffer(file);
+  }
+  $("btnFontB").addEventListener("click", function () { $("fontFileB").click(); });
+  $("btnFontL").addEventListener("click", function () { $("fontFileL").click(); });
+  $("fontFileB").addEventListener("change", function (e) { loadCustomFont(800, e.target.files[0]); e.target.value = ""; });
+  $("fontFileL").addEventListener("change", function (e) { loadCustomFont(300, e.target.files[0]); e.target.value = ""; });
   $("fontSel").addEventListener("change", function (e) { sty.font = e.target.value; try { document.fonts.load("800 40px '" + sty.font + "'"); document.fonts.load("300 40px '" + sty.font + "'"); } catch (er) {} });
   bindRange("sx", "sxVal", function (v) { st.sx = v; }, 2);
   bindRange("sy", "syVal", function (v) { st.sy = v; }, 2);
