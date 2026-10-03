@@ -110,9 +110,12 @@ dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 800
 <header class="top">
   <div>
     <h1>Shoe Poster Studio</h1>
-    <p>Spin the shoe, pin a frame, edit the layout, export the poster.</p>
+    <p id="hdrNote">Spin the shoe, pin a frame, edit the layout, export the poster. Changes save automatically in this browser.</p>
   </div>
-  <button class="primary" id="openExport" type="button">Export poster</button>
+  <div class="dlg-actions">
+    <button id="btnResetAll" type="button" title="Forget the saved settings and start again">Reset settings</button>
+    <button class="primary" id="openExport" type="button">Export poster</button>
+  </div>
 </header>
 
 <main class="app">
@@ -760,15 +763,18 @@ Calçado</textarea></label>
     ctx.restore();
   }
 
-  function setFormat(key) {
+  function setFormat(key, keep) {
     var f = FORMATS[key]; sty.fmt = key; PW = f.w; PH = f.h; MARGIN = 60 * Math.min(PW, PH) / 1000;
     renderer.setSize(PW, PH, false);
     camera.aspect = PW / PH; camera.position.z = f.d; camera.updateProjectionMatrix();
     poster.width = PW; poster.height = PH;
     poster.style.setProperty("--ar", String(PW / PH)); poster.style.setProperty("--maxw", f.maxw);
-    sty.hs = sty.ss = f.size; $("hs").value = $("ss").value = f.size; $("hsVal").textContent = $("ssVal").textContent = String(f.size);
-    shoes[0].zoom = f.zoom;
-    shoeDefaults(); relayout(); syncShoeUI(); buildExportOptions(); if (view !== null) applyView();
+    if (!keep) {
+      sty.hs = sty.ss = f.size; $("hs").value = $("ss").value = f.size; $("hsVal").textContent = $("ssVal").textContent = String(f.size);
+      shoes[0].zoom = f.zoom;
+      shoeDefaults(); relayout(); syncShoeUI();
+    }
+    buildExportOptions(); if (view !== null) applyView();
   }
 
   function buildExportOptions() {
@@ -961,11 +967,11 @@ Calçado</textarea></label>
     });
     Promise.all(jobs).then(function () {
       var ok = loaded.filter(Boolean);
-      if (ok.length) { userLogos = ok; sty.logos = true; $("showLogos").checked = true; $("logoNote").textContent = ok.length + " logo" + (ok.length > 1 ? "s" : "") + " added, spaced evenly in the order you picked them."; }
+      if (ok.length) { userLogos = ok; markExtras(); sty.logos = true; $("showLogos").checked = true; $("logoNote").textContent = ok.length + " logo" + (ok.length > 1 ? "s" : "") + " added, spaced evenly in the order you picked them."; }
       else $("logoNote").textContent = "Those files could not be read as images. Try PNG or SVG.";
     });
   });
-  $("btnClearLogos").addEventListener("click", function () { userLogos = []; $("logoNote").textContent = "Showing the typographic stand-ins again."; });
+  $("btnClearLogos").addEventListener("click", function () { userLogos = []; markExtras(); $("logoNote").textContent = "Showing the typographic stand-ins again."; });
 
   function bindRange(id, valId, fn, digits) {
     $(id).addEventListener("input", function (e) {
@@ -976,27 +982,29 @@ Calçado</textarea></label>
   bindRange("hs", "hsVal", function (v) { sty.hs = v; }, 0);
   bindRange("ss", "ssVal", function (v) { sty.ss = v; }, 0);
   var customFonts = { 800: null, 300: null };
+  function useCustomFontBuffer(weight, buf, name, quiet) {
+    customFonts[weight] = { buf: buf, name: name };
+    var other = weight === 800 ? 300 : 800, jobs = [];
+    // a single file covers both weights until the other one is supplied
+    [weight].concat(customFonts[other] ? [] : [other]).forEach(function (w) {
+      var face = new FontFace("Custom Upload", buf.slice(0), { weight: String(w) });
+      jobs.push(face.load().then(function (f) { document.fonts.add(f); }));
+    });
+    return Promise.all(jobs).then(function () {
+      var sel2 = $("fontSel");
+      if (!sel2.querySelector('option[value="Custom Upload"]')) {
+        var op = document.createElement("option"); op.value = "Custom Upload"; op.textContent = "Custom upload"; sel2.appendChild(op);
+      }
+      if (!quiet) { sel2.value = "Custom Upload"; sty.font = "Custom Upload"; }
+      $("fontNote").textContent = "Using " + name + " for " + (weight === 800 ? "bold" : "light") + (customFonts[other] ? ", and " + customFonts[other].name + " for " + (weight === 800 ? "light" : "bold") + "." : " (also used for the other weight until you add a second file).");
+      markExtras();
+    });
+  }
   function loadCustomFont(weight, file) {
     if (!file) return;
     var rd = new FileReader();
     rd.onload = function () {
-      var buf = rd.result;
-      var jobs = [];
-      customFonts[weight] = { buf: buf, name: file.name };
-      var other = weight === 800 ? 300 : 800;
-      // a single file covers both weights until the other one is supplied
-      [weight].concat(customFonts[other] ? [] : [other]).forEach(function (w) {
-        var face = new FontFace("Custom Upload", buf.slice(0), { weight: String(w) });
-        jobs.push(face.load().then(function (f) { document.fonts.add(f); }));
-      });
-      Promise.all(jobs).then(function () {
-        var sel = $("fontSel");
-        if (!sel.querySelector('option[value="Custom Upload"]')) {
-          var op = document.createElement("option"); op.value = "Custom Upload"; op.textContent = "Custom upload"; sel.appendChild(op);
-        }
-        sel.value = "Custom Upload"; sty.font = "Custom Upload";
-        $("fontNote").textContent = "Using " + file.name + " for " + (weight === 800 ? "bold" : "light") + (customFonts[other] ? ", and " + customFonts[other].name + " for " + (weight === 800 ? "light" : "bold") + "." : " (also used for the other weight until you add a second file).");
-      }).catch(function () { $("fontNote").textContent = "That file could not be read as a font. Try a TTF, OTF, WOFF or WOFF2 file."; });
+      useCustomFontBuffer(weight, rd.result, file.name).catch(function () { $("fontNote").textContent = "That file could not be read as a font. Try a TTF, OTF, WOFF or WOFF2 file."; });
     };
     rd.readAsArrayBuffer(file);
   }
@@ -1106,6 +1114,7 @@ Calçado</textarea></label>
   /* pinned frames */
   var framesEl = $("frames");
   function renderFrames() {
+    markExtras();
     framesEl.textContent = "";
     if (!frames.length) {
       var s = document.createElement("span"); s.className = "empty";
@@ -1313,10 +1322,146 @@ Calçado</textarea></label>
     } catch (err) { status.textContent = "Copy is blocked here. Right-click the image instead."; }
   });
 
+  /* ---------- Saved settings (localStorage, this browser only) ---------- */
+  var STORE_KEY = "shoePosterStudio.v1", lastSaved = "";
+  var BUILTIN_FONTS = ["Hanken Grotesk", "Archivo", "Outfit", "Manrope"];
+  function snapshot() {
+    return {
+      v: 1,
+      tx: { headline: tx.headline, subline: tx.subline },
+      sty: { fmt: sty.fmt, pos: sty.pos, hs: sty.hs, ss: sty.ss, font: (BUILTIN_FONTS.indexOf(sty.font) >= 0 || (sty.font === "Custom Upload" && (customFonts[800] || customFonts[300]))) ? sty.font : "Hanken Grotesk", ink: sty.ink, bgTop: sty.bgTop, bgBot: sty.bgBot, logos: sty.logos },
+      st: { speed: st.speed, anim: st.anim, layers: st.layers, wave: st.wave, glow: st.glow, spread: shared.uSpread.value },
+      sel: sel, layoutMode: layoutMode,
+      x: { size: $("expSize").selectedIndex, fmt: $("expFmt").value, dur: $("vidDur").value, motion: $("vidMotion").value, view: view },
+      shoes: shoes.map(function (sh) {
+        return { yaw: intro ? sh.rest : sh.yaw, pitch: sh.pitch, zoom: sh.zoom, sx: sh.sx, sy: sh.sy, palette: sh.palette, model: sh.model === "custom" ? "sneaker" : sh.model, nx: sh.nx, ny: sh.ny, zr: sh.zr };
+      })
+    };
+  }
+  var skipSave = false, extrasDirty = false, extrasLoading = false, EXTRA_KEY = "shoePosterStudio.v1.extras";
+  var HDR = "Spin the shoe, pin a frame, edit the layout, export the poster. Changes save automatically in this browser.";
+  function markExtras() { extrasDirty = true; }
+  function ab2b64(buf) {
+    var u = new Uint8Array(buf), out = "", ch = 0x8000;
+    for (var i = 0; i < u.length; i += ch) out += String.fromCharCode.apply(null, u.subarray(i, i + ch));
+    return btoa(out);
+  }
+  function b642ab(b) { var bin = atob(b), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  function saveExtras() {
+    var ex = { v: 1, logos: [], fonts: {}, frames: frames.slice(-20) }, total = 0, skipped = false;
+    userLogos.forEach(function (l) {
+      var src = l.img.src;
+      if (src.indexOf("data:") === 0 && total + src.length < 2200000) { total += src.length; ex.logos.push({ src: src, w: l.w, h: l.h }); } else skipped = true;
+    });
+    [800, 300].forEach(function (w) {
+      var f = customFonts[w];
+      if (!f) return;
+      if (total + f.buf.byteLength * 1.4 < 3200000) { ex.fonts[w] = { name: f.name, b64: ab2b64(f.buf) }; total += f.buf.byteLength * 1.4; } else skipped = true;
+    });
+    try { localStorage.setItem(EXTRA_KEY, JSON.stringify(ex)); $("hdrNote").textContent = skipped ? HDR + " Some logos or fonts were too large to keep." : HDR; }
+    catch (e) { try { localStorage.removeItem(EXTRA_KEY); } catch (e2) {} $("hdrNote").textContent = HDR + " Logos, fonts and pinned frames could not be kept (browser storage is full or blocked)."; }
+  }
+  function loadExtras() {
+    var ex = null;
+    try { var raw = localStorage.getItem(EXTRA_KEY); ex = raw ? JSON.parse(raw) : null; } catch (e) { ex = null; }
+    if (!ex || ex.v !== 1) return;
+    extrasLoading = true; var jobs = [];
+    if (Array.isArray(ex.frames)) {
+      frames = ex.frames.filter(function (f) { return f && Array.isArray(f.shoes) && typeof f.thumb === "string" && f.thumb.indexOf("data:image/") === 0; }).slice(-20);
+      renderFrames();
+    }
+    var logoJobs = (Array.isArray(ex.logos) ? ex.logos : []).slice(0, 12).map(function (l, i) {
+      return new Promise(function (res) {
+        if (!l || typeof l.src !== "string" || l.src.indexOf("data:image/") !== 0) { res(null); return; }
+        var im = new Image(); im.onload = function () { res({ img: im, w: im.naturalWidth || l.w || 200, h: im.naturalHeight || l.h || 100 }); }; im.onerror = function () { res(null); }; im.src = l.src;
+      });
+    });
+    jobs.push(Promise.all(logoJobs).then(function (arr) {
+      var ok = arr.filter(Boolean);
+      if (ok.length) { userLogos = ok; $("logoNote").textContent = ok.length + " saved logo" + (ok.length > 1 ? "s" : "") + " restored."; }
+    }));
+    var fonts = ex.fonts || {};
+    [800, 300].forEach(function (w) {
+      var f = fonts[w];
+      if (f && typeof f.b64 === "string") {
+        try { jobs.push(useCustomFontBuffer(w, b642ab(f.b64), String(f.name || "saved font"), true).then(function () { if (wantCustomFont) { $("fontSel").value = "Custom Upload"; sty.font = "Custom Upload"; } }).catch(function () {})); } catch (e) {}
+      }
+    });
+    Promise.all(jobs).then(function () { extrasLoading = false; }, function () { extrasLoading = false; });
+  }
+  var wantCustomFont = false;
+  function saveSettings() {
+    if (exporting || skipSave) return;
+    try {
+      var j = JSON.stringify(snapshot());
+      if (j !== lastSaved) { localStorage.setItem(STORE_KEY, j); lastSaved = j; }
+    } catch (e) {}
+    if (extrasDirty && !extrasLoading) { extrasDirty = false; saveExtras(); }
+  }
+  function num(v, d) { return typeof v === "number" && isFinite(v) ? v : d; }
+  function fire(id, val, type) {
+    var el = $(id); if (!el) return;
+    if (el.type === "checkbox") el.checked = !!val; else el.value = val;
+    el.dispatchEvent(new Event(type || "input"));
+  }
+  function restoreSettings(d) {
+    if (!d || d.v !== 1) return false;
+    var t = d.tx || {}, y = d.sty || {}, s2 = d.st || {};
+    if (typeof t.headline === "string") fire("headline", t.headline);
+    if (typeof t.subline === "string") fire("subline", t.subline);
+    ["ink:tcol", "bgTop:bgTop", "bgBot:bgBot"].forEach(function (p) {
+      var kv = p.split(":"); if (typeof y[kv[0]] === "string" && /^#[0-9a-f]{6}$/i.test(y[kv[0]])) fire(kv[1], y[kv[0]]);
+    });
+    if (typeof y.logos === "boolean") fire("showLogos", y.logos, "change");
+    if (BUILTIN_FONTS.indexOf(y.font) >= 0) fire("fontSel", y.font, "change");
+    else if (y.font === "Custom Upload") wantCustomFont = true;
+    if (typeof y.pos === "string" && POS[y.pos]) { sty.pos = y.pos; $("pos").value = y.pos; }
+    var key = FORMATS[y.fmt] ? y.fmt : "landscape";
+    $("fmt").value = key; setFormat(key, true);
+    fire("hs", num(y.hs, sty.hs)); fire("ss", num(y.ss, sty.ss));
+    var x = d.x || {};
+    if (["png", "jpg", "mp4"].indexOf(x.fmt) >= 0 && Array.prototype.some.call($("expFmt").options, function (o) { return o.value === x.fmt; })) { $("expFmt").value = x.fmt; updateExportUI(); }
+    if (typeof x.size === "number" && x.size >= 0 && x.size < $("expSize").options.length) $("expSize").selectedIndex = x.size;
+    if (typeof x.dur === "string") $("vidDur").value = x.dur;
+    if (x.motion === "turn" || x.motion === "still") $("vidMotion").value = x.motion;
+    if (typeof x.view === "number" && x.view >= 0.1 && x.view <= 3) { view = x.view; applyView(); }
+    fire("sp", num(s2.speed, st.speed)); fire("layers", num(s2.layers, st.layers)); fire("wave", num(s2.wave, st.wave));
+    fire("glow", num(s2.glow, st.glow)); fire("spread", num(s2.spread, shared.uSpread.value));
+    setAnim(s2.anim !== false && !reduce);
+    // shoes
+    var list = Array.isArray(d.shoes) ? d.shoes.slice(0, MAXSHOES) : [];
+    list.forEach(function (p, i) {
+      var o = { yaw: num(p.yaw, -0.2), pitch: num(p.pitch, 0.2), zoom: num(p.zoom, 1), sx: num(p.sx, 0), sy: num(p.sy, 0), palette: Math.max(0, Math.min(PALETTES.length - 1, Math.round(num(p.palette, 0)))), model: p.model === "flow" ? "flow" : "sneaker", nx: num(p.nx, 0), ny: num(p.ny, 0), zr: num(p.zr, 1) };
+      var sh = i === 0 ? shoes[0] : createShoe(o);
+      if (i === 0) { for (var k in o) sh[k] = o[k]; sh.rest = o.yaw; }
+      else sh.rest = o.yaw;
+      applyShoePalette(sh); ensureModel(sh);
+    });
+    layoutMode = d.layoutMode === "trio" ? "trio" : null;
+    sel = Math.max(0, Math.min(shoes.length - 1, Math.round(num(d.sel, 0))));
+    syncShoeUI();
+    return true;
+  }
+  function loadSettings() {
+    try { var raw = localStorage.getItem(STORE_KEY); if (!raw) return false; lastSaved = raw; return restoreSettings(JSON.parse(raw)); }
+    catch (e) { return false; }
+  }
+  $("btnResetAll").addEventListener("click", function () {
+    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(EXTRA_KEY); } catch (e) {}
+    skipSave = true;
+    try { window.location.reload(); } catch (e) { skipSave = false; }
+  });
+  setInterval(saveSettings, 1000);
+  window.addEventListener("pagehide", saveSettings);
+  document.addEventListener("visibilitychange", function () { if (document.hidden) saveSettings(); });
+
   /* ---------- Start ---------- */
   if (reduce) { setAnim(false); }
   createShoe({ yaw: -0.2, pitch: 0.2, zoom: 1.35, sx: -0.75, sy: 0.1, palette: 0 });
-  applyPalette(); renderFrames(); setFormat("landscape"); playIntro();
+  applyPalette(); renderFrames();
+  if (!loadSettings()) setFormat("landscape");
+  loadExtras();
+  playIntro();
   var fontLoads = ["800 56px 'Hanken Grotesk'", "300 56px 'Hanken Grotesk'", "800 56px Archivo", "300 56px Archivo", "800 56px Outfit", "300 56px Outfit", "800 56px Manrope", "300 56px Manrope", "800 13px 'Hanken Grotesk'", "700 9px 'Hanken Grotesk'"];
   try { if (document.fonts && document.fonts.load) fontLoads.forEach(function (f) { document.fonts.load(f); }); } catch (e) {}
   requestAnimationFrame(frame);
