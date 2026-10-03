@@ -14,6 +14,7 @@
   --accent-fg: #ffffff;
   --mat: #e7e3ef;
   --field: #f7f5fa;
+  --ctl-h: 38px;
   --font-ui: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -70,7 +71,14 @@ input[type="text"], textarea, select {
 input[type="text"]:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible, input[type="range"]:focus-visible, #poster:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
+input[type="text"], select { height: var(--ctl-h); padding-block: 0; }
 textarea { resize: vertical; min-height: 64px; }
+button { min-height: var(--ctl-h); }
+input[type="color"] { height: var(--ctl-h); }
+.sw { height: var(--ctl-h); }
+.exp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.exp-head h2 { margin: 0; }
+.x-close { width: var(--ctl-h); padding: 0; font-size: 22px; line-height: 1; }
 input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 input[type="color"] { width: 44px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
 input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
@@ -83,7 +91,7 @@ button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .swatches { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-.sw { height: 34px; padding: 0; border-radius: 8px; }
+.sw { padding: 0; border-radius: 8px; }
 .frames { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; min-height: 36px; align-items: stretch; }
 .frames .empty { color: var(--muted); font-size: 12px; align-self: center; }
 .frame { position: relative; flex: 0 0 auto; width: 78px; padding: 0; border-radius: 6px; overflow: hidden; }
@@ -271,7 +279,10 @@ Calçado</textarea></label>
 </main>
 
 <dialog id="exp" aria-labelledby="expTitle">
-  <h2 id="expTitle">Export poster</h2>
+  <div class="exp-head">
+    <h2 id="expTitle">Export poster</h2>
+    <button type="button" class="x-close" id="expX" aria-label="Close export">×</button>
+  </div>
   <div class="exp-body">
     <div class="exp-settings fields">
       <label>Size
@@ -1223,10 +1234,20 @@ Calçado</textarea></label>
   /* ---------- Export ---------- */
   var dlg = $("exp"), resUrl = null, resBlob = null;
   $("openExport").addEventListener("click", function () {
+    exportCancel = false;
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", "");
   });
   $("expFmt").addEventListener("change", updateExportUI);
-  $("expClose").addEventListener("click", function () { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); });
+  var exportCancel = false;
+  function closeExport() { exportCancel = true; try { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); } catch (e) { dlg.removeAttribute("open"); } }
+  $("expClose").addEventListener("click", closeExport);
+  $("expX").addEventListener("click", closeExport);
+  dlg.addEventListener("click", function (e) {
+    var r = dlg.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeExport();
+  });
+  dlg.addEventListener("close", function () { exportCancel = true; });
+  dlg.addEventListener("cancel", function () { exportCancel = true; });
 
   var crcT = null;
   function crc32(buf) {
@@ -1303,6 +1324,7 @@ Calçado</textarea></label>
     if (!window.VideoEncoder || !window.VideoFrame || !window.Mp4Muxer) {
       status.textContent = "Video export is not available in this browser. Use a recent Chrome, Edge or Safari, or export a PNG."; return;
     }
+    exportCancel = false;
     var fps = 30, secs = parseInt($("vidDur").value, 10), turn = $("vidMotion").value === "turn", N = secs * fps;
     var w = (Math.round(PW * scale) >> 1) << 1, h = (Math.round(PH * scale) >> 1) << 1;
     $("expGo").disabled = true; status.textContent = "Checking video support…";
@@ -1324,6 +1346,7 @@ Calçado</textarea></label>
       }
       function step() {
         if (failed) { restore(); status.textContent = "Video export failed: " + failed.message; return; }
+        if (exportCancel) { try { enc.close(); } catch (e) {} restore(); status.textContent = "Video export cancelled."; return; }
         var end = Math.min(N, i + 6);
         for (; i < end; i++) {
           var tt = i / N;
