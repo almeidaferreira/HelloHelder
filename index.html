@@ -69,6 +69,8 @@ input[type="range"].cp-hue::-moz-range-thumb { width: 14px; height: 14px; border
 .cp-sws button { min-height: 0; height: 24px; padding: 0; border-radius: 6px; }
 .cp-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cp-foot .note { font-size: 11px; }
+.consent { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 80; max-width: 640px; margin-inline: auto; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(10, 5, 25, 0.35); display: flex; gap: 12px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.consent p { margin: 0; font-size: 13px; flex: 1 1 260px; min-width: 0; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { padding: 6px 12px; }
 .zoombar { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
@@ -133,7 +135,7 @@ dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 800
 .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 button.ghost { background: transparent; color: var(--muted); }
-.reset-row { display: flex; justify-content: center; padding-top: 6px; }
+.reset-row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; }
 /* full page export view */
 dialog#exp { width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; padding: 0; overflow: hidden; }
 dialog#exp[open] { display: flex; flex-direction: column; }
@@ -320,7 +322,7 @@ Calçado</textarea></label>
         <p class="note" id="objNote">Sneaker model: "Materials Variants Shoe" by Shopify, CC BY 4.0. Load your own OBJ to wrap the same glowing layers around it (beta, works best with a single closed mesh).</p>
       </div>
     </details>
-    <div class="reset-row"><button class="ghost" id="btnResetAll" type="button">Reset all settings…</button></div>
+    <div class="reset-row"><button class="ghost" id="btnResetAll" type="button">Reset all settings…</button><button class="ghost" id="btnAnalytics" type="button" hidden>Analytics choice</button></div>
   </aside>
 </main>
 
@@ -401,14 +403,16 @@ Calçado</textarea></label>
 </dialog>
 
 <script>
-/* Vercel Web Analytics: cookieless page views. Only loads on the Vercel site, not on previews inside claude.ai or local files. */
-(function () {
-  var h = location.hostname;
-  if (location.protocol !== "https:" || /(^|\.)(claude\.ai|claudeusercontent\.com|localhost)$/.test(h)) return;
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-  var el = document.createElement("script"); el.defer = true; el.src = "/_vercel/insights/script.js"; document.head.appendChild(el);
-})();
+/* Google Analytics 4. Paste the measurement ID (G-XXXXXXXXXX) below to switch it on. Nothing loads until it is set and the visitor accepts. */
+window.GA_MEASUREMENT_ID = "G-XXXXXXXXXX";
 </script>
+<div id="consent" class="consent" role="region" aria-label="Analytics" hidden>
+  <p>This page uses Google Analytics to count visits and which export formats are used. It never sees your poster text or files.</p>
+  <div class="dlg-actions">
+    <button type="button" id="consentNo">Decline</button>
+    <button type="button" class="primary" id="consentYes">Accept</button>
+  </div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 <script>
@@ -417,7 +421,7 @@ Calçado</textarea></label>
   var PW = 1414, PH = 1000;
   var $ = function (id) { return document.getElementById(id); };
   // usage events carry choices such as the export format, never the poster text or uploaded files
-  function track(name, data) { try { if (window.va) window.va("event", { name: name, data: data || {} }); } catch (e) {} }
+  function track(name, data) { try { if (window.gtagLoaded && window.gtag) window.gtag("event", name, data || {}); } catch (e) {} }
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   var PALETTES = [
@@ -1925,6 +1929,34 @@ Calçado</textarea></label>
   setInterval(saveSettings, 1000);
   window.addEventListener("pagehide", saveSettings);
   document.addEventListener("visibilitychange", function () { if (document.hidden) saveSettings(); });
+
+  /* ---------- Google Analytics (loads only after the visitor accepts) ---------- */
+  (function analytics() {
+    var id = window.GA_MEASUREMENT_ID, KEY = "shoePosterStudio.consent";
+    var h = location.hostname, banner = $("consent");
+    var ok = /^G-[A-Z0-9]{6,}$/.test(id || "") && id !== "G-XXXXXXXXXX" && location.protocol === "https:" && !/(^|\.)(claude\.ai|claudeusercontent\.com|localhost)$/.test(h);
+    if (!ok) return;
+    function load() {
+      if (window.gtagLoaded) return;
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      var el = document.createElement("script"); el.async = true; el.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(id); document.head.appendChild(el);
+      window.gtag("js", new Date()); window.gtag("config", id);
+      window.gtagLoaded = true;
+    }
+    function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+    function set(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+    function stop() {
+      // switch off measurement for this page and ask Google's tag to stop
+      try { window["ga-disable-" + id] = true; } catch (e) {}
+    }
+    $("btnAnalytics").hidden = false;
+    $("btnAnalytics").addEventListener("click", function () { banner.hidden = false; });
+    $("consentYes").addEventListener("click", function () { set("granted"); window["ga-disable-" + id] = false; banner.hidden = true; load(); });
+    $("consentNo").addEventListener("click", function () { set("denied"); stop(); banner.hidden = true; });
+    var c = get();
+    if (c === "granted") load(); else if (c === "denied") stop(); else banner.hidden = false;
+  })();
 
   /* ---------- Start ---------- */
   if (reduce) { setAnim(false); }
