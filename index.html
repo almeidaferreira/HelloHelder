@@ -91,12 +91,18 @@ button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accen
 .frame span { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(20, 10, 40, 0.72); color: #fff; font-size: 10px; padding: 2px 4px; text-align: left; font-variant-numeric: tabular-nums; }
 .frame .x { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 9px; background: rgba(20, 10, 40, 0.72); color: #fff; font-size: 12px; line-height: 18px; text-align: center; padding: 0; bottom: auto; left: auto; }
 .note { color: var(--muted); font-size: 12px; margin: 0; }
-dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+[hidden] { display: none !important; }
+dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(1120px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 dialog::backdrop { background: rgba(10, 5, 25, 0.6); }
 dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
 .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-#result { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
-#result img { display: block; max-width: 100%; max-height: 52vh; width: auto; height: auto; margin: 0 auto; border-radius: 4px; border: 1px solid var(--line); }
+#result { display: flex; flex-direction: column; gap: 10px; }
+.exp-body { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; align-items: start; }
+.exp-settings { padding: 0; min-width: 0; }
+.exp-preview { align-items: center; justify-content: center; min-height: 240px; min-width: 0; background: var(--mat); border-radius: 10px; padding: 14px; }
+.exp-preview .note { text-align: center; }
+@media (max-width: 760px) { .exp-body { grid-template-columns: minmax(0, 1fr); } }
+#result img, #result video { display: block; max-width: 100%; max-height: calc(100vh - 150px); width: auto; height: auto; margin: 0 auto; border-radius: 4px; border: 1px solid var(--line); }
 @media (max-width: 900px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .stage { position: static; }
@@ -264,37 +270,42 @@ Calçado</textarea></label>
   </aside>
 </main>
 
-<dialog id="exp">
-  <h2>Export poster</h2>
-  <div class="fields" style="padding:0">
-    <label>Size
-      <select id="expSize"></select>
-    </label>
-    <label>Format
-      <select id="expFmt"><option value="png">PNG (sharp, lossless)</option><option value="jpg">JPG (smaller file)</option></select>
-    </label>
-    <div class="grid2" id="vidOpts" hidden>
-      <label>Length
-        <select id="vidDur"><option value="3">3 seconds</option><option value="6" selected>6 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option></select>
+<dialog id="exp" aria-labelledby="expTitle">
+  <h2 id="expTitle">Export poster</h2>
+  <div class="exp-body">
+    <div class="exp-settings fields">
+      <label>Size
+        <select id="expSize"></select>
       </label>
-      <label>Motion
-        <select id="vidMotion"><option value="turn">Full 360° turn, loops</option><option value="still">Hold the pose, glow only</option></select>
+      <label>Format
+        <select id="expFmt"><option value="png">PNG (sharp, lossless)</option><option value="jpg">JPG (smaller file)</option></select>
       </label>
+      <div class="grid2" id="vidOpts" hidden>
+        <label>Length
+          <select id="vidDur"><option value="3">3 seconds</option><option value="6" selected>6 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option></select>
+        </label>
+        <label>Motion
+          <select id="vidMotion"><option value="turn">Full 360° turn, loops</option><option value="still">Hold the pose, glow only</option></select>
+        </label>
+      </div>
+      <p class="note" id="vidNote" hidden>30 fps H.264 MP4, rendered frame by frame in your browser. Needs a recent Chrome, Edge or Safari.</p>
+      <div class="dlg-actions">
+        <button class="primary" type="button" id="expGo">Render</button>
+        <button type="button" id="expClose">Close</button>
+      </div>
+      <p class="note" id="expStatus" role="status"></p>
+      <div id="resActions" hidden>
+        <p class="note">Right-click or long-press the preview to save it. If the download button does nothing in this view, use that.</p>
+        <div class="dlg-actions">
+          <a id="resDl" download="poster.png"><button type="button">Download</button></a>
+          <button type="button" id="resCopy">Copy image</button>
+        </div>
+      </div>
     </div>
-    <p class="note" id="vidNote" hidden>30 fps H.264 MP4, rendered frame by frame in your browser. Needs a recent Chrome, Edge or Safari.</p>
-    <div class="dlg-actions">
-      <button class="primary" type="button" id="expGo">Render</button>
-      <button type="button" id="expClose">Close</button>
-      <span class="note" id="expStatus"></span>
-    </div>
-  </div>
-  <div id="result" hidden>
-    <img id="resImg" alt="Exported poster">
-    <video id="resVid" controls loop muted playsinline hidden></video>
-    <p class="note">Right-click or long-press the image to save it. If the download button does nothing in this view, use that.</p>
-    <div class="dlg-actions">
-      <a id="resDl" download="poster.png"><button type="button">Download</button></a>
-      <button type="button" id="resCopy">Copy image</button>
+    <div id="result" class="exp-preview">
+      <p class="note" id="resEmpty">Your export appears here once it is rendered.</p>
+      <img id="resImg" alt="Exported poster" hidden>
+      <video id="resVid" controls loop muted playsinline hidden></video>
     </div>
   </div>
 </dialog>
@@ -1246,7 +1257,7 @@ Calçado</textarea></label>
     var fmt = $("expFmt").value, w = Math.round(PW * scale), h = Math.round(PH * scale);
     var status = $("expStatus");
     if (fmt === "mp4") { exportVideo(scale, status); return; }
-    $("resVid").hidden = true; $("resImg").hidden = false; $("resCopy").hidden = false;
+    $("resVid").hidden = true; $("resCopy").hidden = false;
     status.textContent = "Rendering " + w + " × " + h + "…";
     $("expGo").disabled = true;
     setTimeout(function () {
@@ -1263,9 +1274,9 @@ Calçado</textarea></label>
           withDpi(blob, fmt, dpi).then(function (b2) {
             if (resUrl) URL.revokeObjectURL(resUrl);
             resBlob = b2; resUrl = URL.createObjectURL(b2);
-            $("resImg").src = resUrl;
+            $("resImg").src = resUrl; $("resImg").hidden = false;
             var a = $("resDl"); a.href = resUrl; a.download = "poster-" + w + "x" + h + "." + fmt;
-            $("result").hidden = false;
+            $("resEmpty").hidden = true; $("resActions").hidden = false;
             status.textContent = w + " × " + h + " px · " + (b2.size / 1048576).toFixed(1) + " MB";
             $("expGo").disabled = false;
           });
@@ -1334,7 +1345,7 @@ Calçado</textarea></label>
           resBlob = blob; resUrl = URL.createObjectURL(blob);
           var v = $("resVid"); v.src = resUrl; v.hidden = false; $("resImg").hidden = true; $("resCopy").hidden = true; v.play().catch(function () {});
           var a = $("resDl"); a.href = resUrl; a.download = "poster-" + w + "x" + h + ".mp4";
-          $("result").hidden = false;
+          $("resEmpty").hidden = true; $("resActions").hidden = false;
           status.textContent = w + " × " + h + " · " + secs + " s · " + (blob.size / 1048576).toFixed(1) + " MB" + (pc.mux === "avc" ? "" : " (" + pc.mux.toUpperCase() + " in an MP4 wrapper)");
         }).catch(function (e) { restore(); status.textContent = "Video export failed: " + e.message; });
       }
