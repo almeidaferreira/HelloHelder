@@ -1,7 +1,7 @@
 <title>Shoe Poster Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Gloock&family=Hanken+Grotesk:wght@300;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Gloock&family=Hanken+Grotesk:wght@300;800&family=Outfit:wght@300;800&family=Manrope:wght@300;800&family=Archivo:wght@300;800&display=swap">
 <style>
 /* Layout: sticky poster stage on the left, collapsible control groups on the right; stacks on phones. */
 :root {
@@ -141,7 +141,16 @@ Calçado</textarea></label>
             <option value="bl">Bottom left</option>
           </select>
         </label>
-        <label><span class="lh">Text size <span class="val" id="hsVal">56</span></span><input type="range" id="hs" min="28" max="190" step="1" value="56"></label>
+        <label>Font
+          <select id="fontSel">
+            <option value="Hanken Grotesk">Hanken Grotesk</option>
+            <option value="Archivo">Archivo</option>
+            <option value="Outfit">Outfit</option>
+            <option value="Manrope">Manrope</option>
+          </select>
+        </label>
+        <label><span class="lh">Headline size <span class="val" id="hsVal">56</span></span><input type="range" id="hs" min="16" max="320" step="1" value="56"></label>
+        <label><span class="lh">Subline size <span class="val" id="ssVal">56</span></span><input type="range" id="ss" min="16" max="320" step="1" value="56"></label>
       </div>
     </details>
 
@@ -191,10 +200,11 @@ Calçado</textarea></label>
         </div>
         <label><span class="lh">Spin speed <span class="val" id="spVal">0.5</span></span><input type="range" id="sp" min="0.1" max="2" step="0.05" value="0.5"></label>
         <label><span class="lh">Tilt <span class="val" id="tiltVal">0.20</span></span><input type="range" id="tilt" min="-0.3" max="0.9" step="0.01" value="0.2"></label>
-        <label><span class="lh">Size <span class="val" id="zoomVal">0.95</span></span><input type="range" id="zoom" min="0.6" max="1.8" step="0.01" value="0.95"></label>
+        <label><span class="lh">Size <span class="val" id="zoomVal">1.35</span></span><input type="range" id="zoom" min="0.3" max="3" step="0.01" value="1.35"></label>
         <label><span class="lh">Shoe left / right <span class="val" id="sxVal">0.00</span></span><input type="range" id="sx" min="-2.5" max="2.5" step="0.05" value="0"></label>
         <label><span class="lh">Shoe up / down <span class="val" id="syVal">0.00</span></span><input type="range" id="sy" min="-2" max="2" step="0.05" value="0"></label>
         <label><span class="lh">Layers <span class="val" id="layersVal">12</span></span><input type="range" id="layers" min="4" max="16" step="1" value="12"></label>
+        <label><span class="lh">Layer spread <span class="val" id="spreadVal">0.07</span></span><input type="range" id="spread" min="0.01" max="0.3" step="0.01" value="0.07"></label>
         <label><span class="lh">Ripple <span class="val" id="waveVal">1.0</span></span><input type="range" id="wave" min="0" max="2" step="0.05" value="1"></label>
         <label><span class="lh">Glow <span class="val" id="glowVal">1.0</span></span><input type="range" id="glow" min="0.3" max="2" step="0.05" value="1"></label>
         <div class="dlg-actions">
@@ -250,7 +260,7 @@ Calçado</textarea></label>
   ];
 
   var st = {
-    sx: -0.75, sy: 0.1, yaw: -0.2, pitch: 0.2, zoom: 0.95, spin: !reduce, speed: 0.5, anim: !reduce, time: 0,
+    sx: -0.75, sy: 0.1, yaw: -0.2, pitch: 0.2, zoom: 1.35, spin: !reduce, speed: 0.5, anim: !reduce, time: 0,
     layers: 12, wave: 1, glow: 1, palette: 0, dragging: false
   };
   var frames = [];
@@ -270,12 +280,12 @@ Calçado</textarea></label>
   scene.add(pivot);
 
   var shared = {
-    uTime: { value: 0 }, uWave: { value: 1 }, uGlow: { value: 1 }, uCount: { value: 12 }, uAlphaScale: { value: 1 },
+    uTime: { value: 0 }, uWave: { value: 1 }, uSpread: { value: 0.07 }, uGlow: { value: 1 }, uCount: { value: 12 }, uAlphaScale: { value: 1 },
     uC: { value: [0, 1, 2, 3, 4].map(function () { return new THREE.Color(); }) }
   };
 
   var VERT = [
-    "uniform float uTime; uniform float uShell; uniform float uCount; uniform float uWave;",
+    "uniform float uTime; uniform float uShell; uniform float uCount; uniform float uWave; uniform float uSpread;",
     "attribute vec3 aDir;",
     "varying vec3 vWorld; varying vec2 vUv; varying float vRip;",
     "void main(){",
@@ -283,8 +293,8 @@ Calçado</textarea></label>
     "  vec3 p = position;",
     "  float rip  = sin(uv.y * 6.2831 * 5.0 + uv.x * 9.0 + uTime * 0.9 + uShell * 0.7) * 0.5 + 0.5;",
     "  float rip2 = sin(uv.x * 14.0 - uTime * 0.7 + uv.y * 6.2831 * 2.0 + uShell * 1.3);",
-    "  float amp = uWave * (0.03 + 0.11 * s);",
-    "  float off = s * 0.22 + amp * (rip * 0.6 + rip2 * 0.4);",
+    "  float amp = uWave * (0.03 + 0.11 * s) * clamp(uSpread / 0.22, 0.25, 1.0);",
+    "  float off = s * uSpread + amp * (rip * 0.6 + rip2 * 0.4);",
     "  p += aDir * off;",
     "  p.x += sin(uTime * 0.5 + uShell) * 0.02 * uWave;",
     "  vRip = rip; vUv = uv;",
@@ -331,7 +341,7 @@ Calçado</textarea></label>
 
   function mkUniforms(i) {
     return {
-      uShell: { value: i }, uTime: shared.uTime, uWave: shared.uWave, uGlow: shared.uGlow, uCount: shared.uCount,
+      uShell: { value: i }, uTime: shared.uTime, uWave: shared.uWave, uSpread: shared.uSpread, uGlow: shared.uGlow, uCount: shared.uCount,
       uAlphaScale: shared.uAlphaScale, uC: shared.uC
     };
   }
@@ -501,7 +511,7 @@ Calçado</textarea></label>
 
   /* ---------- Poster drawing (units follow the chosen format) ---------- */
   var tx = { headline: "Prémios de\nExcelência e\nInovação", subline: "Cluster do\nCalçado" };
-  var sty = { fmt: "landscape", pos: "tr", hs: 56, ink: "#2a2a31", bgTop: "#aab5cb", bgBot: "#eceef4", logos: true };
+  var sty = { fmt: "landscape", pos: "tr", hs: 56, ss: 56, font: "Hanken Grotesk", ink: "#2a2a31", bgTop: "#aab5cb", bgBot: "#eceef4", logos: true };
   var FORMATS = {
     landscape: { w: 1414, h: 1000, size: 56, maxw: "780px", d: 8.6 },
     portrait: { w: 1000, h: 1414, size: 92, maxw: "520px", d: 10.6 },
@@ -510,7 +520,7 @@ Calçado</textarea></label>
   var POS = { tr: [1, 0], tl: [-1, 0], tc: [0, 0], mr: [1, 0.5], ml: [-1, 0.5], br: [1, 1], bl: [-1, 1] };
   var userLogos = [];
   var MARGIN = 60;
-  var FONT = "'Hanken Grotesk', 'Helvetica Neue', Arial, sans-serif";
+  function fontStack() { return "'" + sty.font + "', 'Helvetica Neue', Arial, sans-serif"; }
 
   function setLS(ctx, px) { if ("letterSpacing" in ctx) ctx.letterSpacing = px + "px"; }
 
@@ -536,10 +546,10 @@ Calçado</textarea></label>
       ctx.beginPath(); ctx.rect(p[0] + 2, p[1] + 2, 15, 15); ctx.stroke();
       if (i === 0 || i === 3) ctx.fillRect(p[0] + 6, p[1] + 6, 7, 7);
     });
-    ["CENTRO", "TECNOLÓGICO DO", "CALÇADO DE", "PORTUGAL"].forEach(function (l, i) { t(l, 52, 13 + i * 10, "700 8px " + FONT, "left", 0.3); });
+    ["CENTRO", "TECNOLÓGICO DO", "CALÇADO DE", "PORTUGAL"].forEach(function (l, i) { t(l, 52, 13 + i * 10, "700 8px " + fontStack(), "left", 0.3); });
     // Portugal Footwear
     ctx.strokeRect(196, 2, 50, 42);
-    t("PORTUGAL", 221, 20, "800 8px " + FONT, "center", 0.4); t("FOOTWEAR", 221, 31, "800 8px " + FONT, "center", 0.4);
+    t("PORTUGAL", 221, 20, "800 8px " + fontStack(), "center", 0.4); t("FOOTWEAR", 221, 31, "800 8px " + fontStack(), "center", 0.4);
     // right group, laid out from the right edge
     var x = tw;
     // EU
@@ -548,23 +558,23 @@ Calçado</textarea></label>
     ctx.fillStyle = "#ffd617";
     for (var k = 0; k < 12; k++) { var a = k / 12 * Math.PI * 2; ctx.beginPath(); ctx.arc(ex + 23 + Math.cos(a) * 10, 23.5 + Math.sin(a) * 10, 1.5, 0, 7); ctx.fill(); }
     ctx.fillStyle = INK;
-    t("Cofinanciado pela", ex + 54, 22, "700 9px " + FONT, "left", 0); t("União Europeia", ex + 54, 34, "700 9px " + FONT, "left", 0);
+    t("Cofinanciado pela", ex + 54, 22, "700 9px " + fontStack(), "left", 0); t("União Europeia", ex + 54, 34, "700 9px " + fontStack(), "left", 0);
     // Portugal 2030
     var px = ex - 30 - 108;
     ctx.fillStyle = INK;
     [0, 9, 18].forEach(function (o) { ctx.beginPath(); ctx.moveTo(px + o + 4, 12); ctx.lineTo(px + o + 9, 12); ctx.lineTo(px + o + 3, 40); ctx.lineTo(px + o - 2, 40); ctx.closePath(); ctx.fill(); });
-    t("PORTUGAL", px + 34, 14, "700 8px " + FONT, "left", 0.5);
-    t("2030", px + 32, 40, "800 31px " + FONT, "left", -1);
+    t("PORTUGAL", px + 34, 14, "700 8px " + fontStack(), "left", 0.5);
+    t("2030", px + 32, 40, "800 31px " + fontStack(), "left", -1);
     // COMPETE 2030
     var cx = px - 30 - 118;
-    t("COMPETE", cx, 28, "800 26px " + FONT, "left", 0.5);
-    t("2030", cx + 118, 41, "700 9px " + FONT, "right", 1);
+    t("COMPETE", cx, 28, "800 26px " + fontStack(), "left", 0.5);
+    t("2030", cx + 118, 41, "700 9px " + fontStack(), "right", 1);
     // knowledge in motion
     var kx = cx - 30 - 118;
     ctx.beginPath(); ctx.arc(kx + 12, 24, 12, 0, 7); ctx.fill();
     ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(kx + 6, 24); ctx.lineTo(kx + 18, 24); ctx.moveTo(kx + 14, 19); ctx.lineTo(kx + 19, 24); ctx.lineTo(kx + 14, 29); ctx.stroke();
     ctx.fillStyle = INK;
-    t("knowledge", kx + 32, 22, "800 13px " + FONT, "left", -0.2); t("in motion", kx + 32, 36, "800 13px " + FONT, "left", -0.2);
+    t("knowledge", kx + 32, 22, "800 13px " + fontStack(), "left", -0.2); t("in motion", kx + 32, 36, "800 13px " + fontStack(), "left", -0.2);
   }
 
   function drawLogos(ctx) {
@@ -587,25 +597,27 @@ Calçado</textarea></label>
 
   function drawCopy(ctx) {
     var head = tx.headline.split("\n"), sub = tx.subline.split("\n"), lines = [];
-    head.forEach(function (l) { lines.push([l, 800]); }); sub.forEach(function (l) { lines.push([l, 300]); });
-    var S = sty.hs, p = POS[sty.pos], h = p[0], v = p[1];
-    function widest(sz) {
-      var w = 0; setLS(ctx, -0.02 * sz);
-      lines.forEach(function (l) { ctx.font = l[1] + " " + sz + "px " + FONT; w = Math.max(w, ctx.measureText(l[0]).width); });
+    head.forEach(function (l) { lines.push([l, 800, sty.hs]); }); sub.forEach(function (l) { lines.push([l, 300, sty.ss]); });
+    var p = POS[sty.pos], h = p[0], v = p[1], k = 1;
+    function widest(f) {
+      var w = 0;
+      lines.forEach(function (l) { var sz = l[2] * f; setLS(ctx, -0.02 * sz); ctx.font = l[1] + " " + sz + "px " + fontStack(); w = Math.max(w, ctx.measureText(l[0]).width); });
       return w;
     }
-    var bw = widest(S), cap = PW - 2 * MARGIN;
-    if (bw > cap) { S = S * cap / bw; bw = widest(S); }
-    var lh = S * 1.08, bh = lines.length * lh;
+    var bw = widest(1), cap = PW - 2 * MARGIN;
+    if (bw > cap) { k = cap / bw; bw = widest(k); }
+    var bh = 0; lines.forEach(function (l) { bh += l[2] * k * 1.08; });
     var logoH = sty.logos ? 46 * logoScale() + 40 : 0;
     var x = h === -1 ? MARGIN : (h === 1 ? PW - MARGIN - bw : (PW - bw) / 2);
     var y0 = v === 0 ? MARGIN + 6 : (v === 1 ? PH - MARGIN - logoH - bh : (PH - bh) / 2 - 30);
     ctx.fillStyle = sty.ink; ctx.textBaseline = "alphabetic";
     ctx.textAlign = h === 0 ? "center" : "left";
     var tx0 = h === 0 ? PW / 2 : x;
-    lines.forEach(function (l, i) {
-      ctx.font = l[1] + " " + S + "px " + FONT; setLS(ctx, -0.02 * S);
-      ctx.fillText(l[0], tx0, y0 + S * 0.86 + i * lh);
+    var cy = y0;
+    lines.forEach(function (l) {
+      var sz = l[2] * k;
+      ctx.font = l[1] + " " + sz + "px " + fontStack(); setLS(ctx, -0.02 * sz);
+      ctx.fillText(l[0], tx0, cy + sz * 0.86); cy += sz * 1.08;
     });
     setLS(ctx, 0); ctx.textAlign = "left";
   }
@@ -653,7 +665,7 @@ Calçado</textarea></label>
     camera.aspect = PW / PH; camera.position.z = f.d; camera.updateProjectionMatrix();
     poster.width = PW; poster.height = PH;
     poster.style.setProperty("--ar", String(PW / PH)); poster.style.setProperty("--maxw", f.maxw);
-    sty.hs = f.size; $("hs").value = f.size; $("hsVal").textContent = String(f.size);
+    sty.hs = sty.ss = f.size; $("hs").value = $("ss").value = f.size; $("hsVal").textContent = $("ssVal").textContent = String(f.size);
     shoeDefaults(); buildExportOptions();
   }
 
@@ -731,7 +743,7 @@ Calçado</textarea></label>
   poster.addEventListener("pointercancel", endDrag);
   poster.addEventListener("wheel", function (e) {
     e.preventDefault();
-    st.zoom = Math.max(0.6, Math.min(1.8, st.zoom * (e.deltaY > 0 ? 0.96 : 1.04)));
+    st.zoom = Math.max(0.3, Math.min(3, st.zoom * (e.deltaY > 0 ? 0.96 : 1.04)));
     $("zoom").value = st.zoom; $("zoomVal").textContent = st.zoom.toFixed(2);
   }, { passive: false });
   poster.addEventListener("keydown", function (e) {
@@ -779,12 +791,15 @@ Calçado</textarea></label>
     });
   }
   bindRange("hs", "hsVal", function (v) { sty.hs = v; }, 0);
+  bindRange("ss", "ssVal", function (v) { sty.ss = v; }, 0);
+  $("fontSel").addEventListener("change", function (e) { sty.font = e.target.value; try { document.fonts.load("800 40px '" + sty.font + "'"); document.fonts.load("300 40px '" + sty.font + "'"); } catch (er) {} });
   bindRange("sx", "sxVal", function (v) { st.sx = v; }, 2);
   bindRange("sy", "syVal", function (v) { st.sy = v; }, 2);
   bindRange("sp", "spVal", function (v) { st.speed = v; }, 2);
   bindRange("tilt", "tiltVal", function (v) { st.pitch = v; }, 2);
   bindRange("zoom", "zoomVal", function (v) { st.zoom = v; }, 2);
   bindRange("layers", "layersVal", function (v) { st.layers = v; applyLayers(); }, 0);
+  bindRange("spread", "spreadVal", function (v) { shared.uSpread.value = v; }, 2);
   bindRange("wave", "waveVal", function (v) { st.wave = v; shared.uWave.value = v; }, 1);
   bindRange("glow", "glowVal", function (v) { st.glow = v; shared.uGlow.value = v; }, 1);
 
@@ -941,7 +956,7 @@ Calçado</textarea></label>
   /* ---------- Start ---------- */
   if (reduce) { setSpin(false); setAnim(false); }
   applyLayers(); applyPalette(); renderFrames(); setFormat("landscape"); applyModel();
-  var fontLoads = ["800 56px 'Hanken Grotesk'", "300 56px 'Hanken Grotesk'", "800 13px 'Hanken Grotesk'", "700 9px 'Hanken Grotesk'"];
+  var fontLoads = ["800 56px 'Hanken Grotesk'", "300 56px 'Hanken Grotesk'", "800 56px Archivo", "300 56px Archivo", "800 56px Outfit", "300 56px Outfit", "800 56px Manrope", "300 56px Manrope", "800 13px 'Hanken Grotesk'", "700 9px 'Hanken Grotesk'"];
   try { if (document.fonts && document.fonts.load) fontLoads.forEach(function (f) { document.fonts.load(f); }); } catch (e) {}
   requestAnimationFrame(frame);
 })();
