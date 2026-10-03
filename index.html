@@ -340,7 +340,7 @@ Calçado</textarea></label>
   </div>
   <div class="exp-body">
     <div class="exp-settings fields">
-      <label>Size
+      <label id="expSizeWrap">Size
         <select id="expSize"></select>
       </label>
       <label>Format
@@ -354,6 +354,26 @@ Calçado</textarea></label>
           <select id="vidMotion"><option value="turn">Full 360° turn, loops</option><option value="still">Hold the pose, glow only</option></select>
         </label>
       </div>
+      <div id="pdfOpts" class="fields" style="padding:0" hidden>
+        <div class="grid2">
+          <label>Paper
+            <select id="pdfPaper"><option value="A1">A1 · 594×841</option><option value="A2">A2 · 420×594</option><option value="A3">A3 · 297×420</option><option value="A4" selected>A4 · 210×297</option><option value="A5">A5 · 148×210</option></select>
+          </label>
+          <label>Resolution
+            <select id="pdfDpi"><option value="150">150 dpi · draft</option><option value="200">200 dpi</option><option value="300" selected>300 dpi · print</option></select>
+          </label>
+        </div>
+        <div class="grid2">
+          <label>Bleed
+            <select id="pdfBleed"><option value="0">None</option><option value="3" selected>3 mm</option><option value="5">5 mm</option></select>
+          </label>
+          <label>Crop marks
+            <select id="pdfMarks"><option value="1" selected>On</option><option value="0">Off</option></select>
+          </label>
+        </div>
+        <p class="note" id="pdfSummary"></p>
+        <p class="note">The PDF is RGB (sRGB). Ask your printer whether they want it converted to CMYK. Trim and bleed boxes are set for them.</p>
+      </div>
       <p class="note" id="vidNote" hidden>30 fps H.264 MP4, rendered frame by frame in your browser. Needs a recent Chrome, Edge or Safari.</p>
       <div class="dlg-actions">
         <button class="primary" type="button" id="expGo">Render</button>
@@ -361,9 +381,10 @@ Calçado</textarea></label>
       </div>
       <p class="note" id="expStatus" role="status"></p>
       <div id="resActions" hidden>
-        <p class="note">Right-click or long-press the preview to save it. If the download button does nothing in this view, use that.</p>
+        <p class="note" id="resNote">Right-click or long-press the preview to save it. If the download button does nothing in this view, use that.</p>
         <div class="dlg-actions">
           <a id="resDl" download="poster.png"><button type="button">Download</button></a>
+          <a id="resOpen" target="_blank" rel="noopener" hidden><button type="button">Open PDF</button></a>
           <button type="button" id="resCopy">Copy image</button>
         </div>
       </div>
@@ -868,7 +889,7 @@ Calçado</textarea></label>
     ];
     var fsel = $("expFmt"), keep = fsel.value;
     fsel.textContent = "";
-    (isPoster ? [["png", "PNG (sharp, lossless)"], ["jpg", "JPG (smaller file)"]] : [["png", "PNG image (sharp, lossless)"], ["mp4", "MP4 video (turntable)"], ["jpg", "JPG image (smaller file)"]]).forEach(function (f) {
+    (isPoster ? [["png", "PNG (sharp, lossless)"], ["jpg", "JPG (smaller file)"], ["pdf", "PDF for print (A1 to A5)"]] : [["png", "PNG image (sharp, lossless)"], ["mp4", "MP4 video (turntable)"], ["jpg", "JPG image (smaller file)"]]).forEach(function (f) {
       var op = document.createElement("option"); op.value = f[0]; op.textContent = f[1]; fsel.appendChild(op);
     });
     fsel.value = Array.prototype.some.call(fsel.options, function (o) { return o.value === keep; }) ? keep : "png";
@@ -882,10 +903,24 @@ Calçado</textarea></label>
     });
   }
 
+  var PAPERS = { A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };
+  function pdfPlan() {
+    var paper = $("pdfPaper").value, dpi = parseInt($("pdfDpi").value, 10), want = dpi, bleed = parseFloat($("pdfBleed").value) || 0, marks = $("pdfMarks").value === "1";
+    var mm = PAPERS[paper] || PAPERS.A4, land = PW > PH, wmm = land ? mm[1] : mm[0], hmm = land ? mm[0] : mm[1];
+    function area(d) { return ((wmm + 2 * bleed) / 25.4 * d) * ((hmm + 2 * bleed) / 25.4 * d); }
+    while (area(dpi) > 56e6 && dpi > 72) dpi -= 5;
+    return { paper: paper, dpi: dpi, want: want, bleed: bleed, marks: marks, wmm: wmm, hmm: hmm, land: land };
+  }
+  function updatePdfSummary() {
+    if (!$("pdfSummary")) return;
+    var pl = pdfPlan(), tw = Math.round(pl.wmm / 25.4 * pl.dpi), th = Math.round(pl.hmm / 25.4 * pl.dpi);
+    $("pdfSummary").textContent = pl.paper + (pl.land ? " landscape " : " portrait ") + pl.wmm + " × " + pl.hmm + " mm" + (pl.bleed ? " plus " + pl.bleed + " mm bleed" : "") + " · artwork " + tw + " × " + th + " px at " + pl.dpi + " dpi" + (pl.dpi < pl.want ? " (lowered from " + pl.want + " to fit the browser's size limit)" : "") + ".";
+  }
   function updateExportUI() {
-    var v = $("expFmt").value === "mp4";
-    $("vidOpts").hidden = !v; $("vidNote").hidden = !v;
-    $("expGo").textContent = v ? "Render video" : "Render image";
+    var f = $("expFmt").value, v = f === "mp4", pdf = f === "pdf";
+    $("vidOpts").hidden = !v; $("vidNote").hidden = !v; $("pdfOpts").hidden = !pdf; $("expSizeWrap").hidden = pdf;
+    $("expGo").textContent = v ? "Render video" : (pdf ? "Render PDF" : "Render image");
+    if (pdf) updatePdfSummary();
   }
 
   function hexA(hex, a) {
@@ -1481,10 +1516,11 @@ Calçado</textarea></label>
     var w = Math.min(cw, ch * ar), h = w / ar;
     fr.style.width = Math.floor(w) + "px"; fr.style.height = Math.floor(h) + "px";
   }
+  var RES_NOTE = "Right-click or long-press the preview to save it. If the download button does nothing in this view, use that.";
   function resetResult() {
     if (!$("expPrev")) return;
     $("resImg").hidden = true; $("resVid").hidden = true; try { $("resVid").pause(); } catch (e) {}
-    $("expPrev").hidden = false; $("resActions").hidden = true; $("expStatus").textContent = "";
+    $("expPrev").hidden = false; $("resActions").hidden = true; $("resOpen").hidden = true; $("expStatus").textContent = ""; $("resNote").textContent = RES_NOTE;
   }
   function loadPreview() {
     var c = $("expPrev"); c.width = PW; c.height = PH;
@@ -1498,7 +1534,8 @@ Calçado</textarea></label>
     requestAnimationFrame(fitFrame);
   });
   window.addEventListener("resize", function () { if (dlg.open) fitFrame(); });
-  ["expSize", "expFmt", "vidDur", "vidMotion"].forEach(function (id) { $(id).addEventListener("change", resetResult); });
+  ["expSize", "expFmt", "vidDur", "vidMotion", "pdfPaper", "pdfDpi", "pdfBleed", "pdfMarks"].forEach(function (id) { $(id).addEventListener("change", resetResult); });
+  ["pdfPaper", "pdfDpi", "pdfBleed", "pdfMarks"].forEach(function (id) { $(id).addEventListener("change", updatePdfSummary); });
   // overlay mirrors the status text while a render is running
   new MutationObserver(function () { $("expBusyText").textContent = $("expStatus").textContent; }).observe($("expStatus"), { childList: true, characterData: true, subtree: true });
   new MutationObserver(function () { $("expBusy").hidden = !$("expGo").disabled; }).observe($("expGo"), { attributes: true, attributeFilter: ["disabled"] });
@@ -1543,7 +1580,9 @@ Calçado</textarea></label>
     var fmt = $("expFmt").value, w = Math.round(PW * scale), h = Math.round(PH * scale);
     var status = $("expStatus");
     if (fmt === "mp4") { exportVideo(scale, status); return; }
-    $("resVid").hidden = true; $("resCopy").hidden = false;
+    if (fmt === "pdf") { exportPdf(status); return; }
+    $("resOpen").hidden = true;
+    $("resVid").hidden = true; $("resCopy").hidden = false; $("resOpen").hidden = true;
     status.textContent = "Rendering " + w + " × " + h + "…";
     $("expGo").disabled = true;
     setTimeout(function () {
@@ -1573,6 +1612,86 @@ Calçado</textarea></label>
       }
     }, 30);
   });
+  /* ---------- PDF for print ---------- */
+  function buildPdf(jpeg, iw, ih, pl) {
+    var k = 72 / 25.4, slug = pl.marks ? 8 : 0, bl = pl.bleed;
+    var W = (pl.wmm + 2 * bl + 2 * slug) * k, H = (pl.hmm + 2 * bl + 2 * slug) * k;
+    var ix = slug * k, iy = slug * k, iW = (pl.wmm + 2 * bl) * k, iH = (pl.hmm + 2 * bl) * k;
+    var tx0 = (slug + bl) * k, ty0 = (slug + bl) * k, tx1 = tx0 + pl.wmm * k, ty1 = ty0 + pl.hmm * k;
+    function n(v) { return v.toFixed(3); }
+    var content = "q " + n(iW) + " 0 0 " + n(iH) + " " + n(ix) + " " + n(iy) + " cm /Im0 Do Q\n";
+    if (pl.marks) {
+      var gap = (bl + 1) * k, len = 5 * k, ln = "";
+      [[tx0, ty0, -1, -1], [tx1, ty0, 1, -1], [tx0, ty1, -1, 1], [tx1, ty1, 1, 1]].forEach(function (c) {
+        ln += n(c[0] + c[2] * gap) + " " + n(c[1]) + " m " + n(c[0] + c[2] * (gap + len)) + " " + n(c[1]) + " l S\n";
+        ln += n(c[0]) + " " + n(c[1] + c[3] * gap) + " m " + n(c[0]) + " " + n(c[1] + c[3] * (gap + len)) + " l S\n";
+      });
+      content += "q 0 0 0 RG 0.25 w\n" + ln + "Q\n";
+    }
+    var enc = new TextEncoder(), parts = [], total = 0, offs = [];
+    function add(x) { var u = typeof x === "string" ? enc.encode(x) : x; parts.push(u); total += u.length; }
+    function obj(i, body) { offs[i] = total; add(i + " 0 obj\n" + body + "\nendobj\n"); }
+    add(new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]));
+    obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+    obj(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+    obj(3, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + n(W) + " " + n(H) + "] /BleedBox [" + n(ix) + " " + n(iy) + " " + n(ix + iW) + " " + n(iy + iH) + "] /TrimBox [" + n(tx0) + " " + n(ty0) + " " + n(tx1) + " " + n(ty1) + "] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>");
+    offs[4] = total;
+    add("4 0 obj\n<< /Type /XObject /Subtype /Image /Width " + iw + " /Height " + ih + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + jpeg.length + " >>\nstream\n");
+    add(jpeg); add("\nendstream\nendobj\n");
+    obj(5, "<< /Length " + enc.encode(content).length + " >>\nstream\n" + content + "endstream");
+    var xo = total, xr = "xref\n0 6\n0000000000 65535 f \n";
+    for (var i = 1; i <= 5; i++) xr += ("0000000000" + offs[i]).slice(-10) + " 00000 n \n";
+    add(xr + "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + xo + "\n%%EOF\n");
+    return new Blob(parts, { type: "application/pdf" });
+  }
+
+  function exportPdf(status) {
+    var pl = pdfPlan(), tw = Math.round(pl.wmm / 25.4 * pl.dpi), th = Math.round(pl.hmm / 25.4 * pl.dpi), b = Math.round(pl.bleed / 25.4 * pl.dpi);
+    $("expGo").disabled = true; status.textContent = "Rendering " + pl.paper + " at " + pl.dpi + " dpi (" + tw + " × " + th + " px)…";
+    function fail(msg) { renderer.setSize(PW, PH, false); status.textContent = msg; $("expGo").disabled = false; }
+    setTimeout(function () {
+      var oc = null, bc = null;
+      try {
+        renderer.setSize(tw, th, false); renderScene();
+        oc = document.createElement("canvas"); oc.width = tw; oc.height = th;
+        var octx = oc.getContext("2d");
+        if (!octx) { fail("Your browser could not create an image this large. Try a lower resolution or a smaller paper."); return; }
+        hl = null; octx.setTransform(tw / PW, 0, 0, th / PH, 0, 0); drawPoster(octx);
+        renderer.setSize(PW, PH, false); renderScene();
+        bc = oc;
+        if (b > 0) {
+          bc = document.createElement("canvas"); bc.width = tw + 2 * b; bc.height = th + 2 * b;
+          var c = bc.getContext("2d");
+          c.drawImage(oc, b, b);
+          // extend the edge pixels outward to make the bleed
+          c.drawImage(oc, 0, 0, tw, 1, b, 0, tw, b); c.drawImage(oc, 0, th - 1, tw, 1, b, th + b, tw, b);
+          c.drawImage(oc, 0, 0, 1, th, 0, b, b, th); c.drawImage(oc, tw - 1, 0, 1, th, tw + b, b, b, th);
+          c.drawImage(oc, 0, 0, 1, 1, 0, 0, b, b); c.drawImage(oc, tw - 1, 0, 1, 1, tw + b, 0, b, b);
+          c.drawImage(oc, 0, th - 1, 1, 1, 0, th + b, b, b); c.drawImage(oc, tw - 1, th - 1, 1, 1, tw + b, th + b, b, b);
+          oc.width = 1; oc.height = 1;
+        }
+        status.textContent = "Encoding the PDF…";
+        bc.toBlob(function (blob) {
+          if (!blob) { fail("Your browser could not encode an image this large. Try a lower resolution or a smaller paper."); return; }
+          blob.arrayBuffer().then(function (ab) {
+            var iw = bc.width, ih = bc.height;
+            bc.width = 1; bc.height = 1;
+            var pdf = buildPdf(new Uint8Array(ab), iw, ih, pl);
+            if (resUrl) URL.revokeObjectURL(resUrl);
+            resBlob = pdf; resUrl = URL.createObjectURL(pdf);
+            var name = "poster-" + pl.paper + (pl.land ? "-landscape" : "-portrait") + "-" + pl.dpi + "dpi.pdf";
+            var a = $("resDl"); a.href = resUrl; a.download = name;
+            var o = $("resOpen"); o.href = resUrl; o.hidden = false;
+            $("resImg").hidden = true; $("resVid").hidden = true; $("expPrev").hidden = false; $("resCopy").hidden = true; $("resActions").hidden = false;
+            $("resNote").textContent = "The preview shows the artwork. Use Download to save the PDF, or Open PDF to view it in a new tab.";
+            status.textContent = pl.paper + " PDF ready · " + (pdf.size / 1048576).toFixed(1) + " MB · " + pl.wmm + " × " + pl.hmm + " mm" + (pl.bleed ? " + " + pl.bleed + " mm bleed" : "") + (pl.marks ? " + crop marks" : "") + " · " + pl.dpi + " dpi";
+            $("expGo").disabled = false;
+          }).catch(function (e) { fail("PDF export failed: " + e.message); });
+        }, "image/jpeg", 0.95);
+      } catch (err) { fail("PDF export failed: " + err.message); }
+    }, 40);
+  }
+
   function pickCodec(w, h, fps) {
     var mbs = Math.ceil(w / 16) * Math.ceil(h / 16), bitrate = Math.round(w * h * fps * 0.14);
     var cands = [["avc", mbs > 8160 ? "avc1.640033" : "avc1.640028"], ["vp9", "vp09.00.50.08"], ["av1", "av01.0.12M.08"]];
@@ -1631,6 +1750,7 @@ Calçado</textarea></label>
           restore();
           if (resUrl) URL.revokeObjectURL(resUrl);
           resBlob = blob; resUrl = URL.createObjectURL(blob);
+          $("resOpen").hidden = true;
           var v = $("resVid"); v.src = resUrl; v.hidden = false; $("resImg").hidden = true; $("resCopy").hidden = true; v.play().catch(function () {});
           var a = $("resDl"); a.href = resUrl; a.download = "poster-" + w + "x" + h + ".mp4";
           $("expPrev").hidden = true; $("resActions").hidden = false;
@@ -1662,7 +1782,7 @@ Calçado</textarea></label>
       sty: { fmt: sty.fmt, pos: sty.pos, align: sty.align, hs: sty.hs, ss: sty.ss, font: (BUILTIN_FONTS.indexOf(sty.font) >= 0 || (sty.font === "Custom Upload" && (customFonts[800] || customFonts[300]))) ? sty.font : "Hanken Grotesk", ink: sty.ink, bgTop: sty.bgTop, bgBot: sty.bgBot, logos: sty.logos },
       st: { speed: st.speed, anim: st.anim, layers: st.layers, wave: st.wave, glow: st.glow, spread: shared.uSpread.value },
       sel: sel, layoutMode: layoutMode,
-      x: { size: $("expSize").selectedIndex, fmt: $("expFmt").value, dur: $("vidDur").value, motion: $("vidMotion").value, view: view },
+      x: { paper: $("pdfPaper").value, pdpi: $("pdfDpi").value, bleed: $("pdfBleed").value, marks: $("pdfMarks").value, size: $("expSize").selectedIndex, fmt: $("expFmt").value, dur: $("vidDur").value, motion: $("vidMotion").value, view: view },
       shoes: shoes.map(function (sh) {
         return { yaw: intro ? sh.rest : sh.yaw, pitch: sh.pitch, zoom: sh.zoom, sx: sh.sx, sy: sh.sy, palette: sh.palette, model: sh.model === "custom" ? "sneaker" : sh.model, nx: sh.nx, ny: sh.ny, zr: sh.zr };
       })
@@ -1751,7 +1871,11 @@ Calçado</textarea></label>
     $("fmt").value = key; setFormat(key, true);
     fire("hs", num(y.hs, sty.hs)); fire("ss", num(y.ss, sty.ss));
     var x = d.x || {};
-    if (["png", "jpg", "mp4"].indexOf(x.fmt) >= 0 && Array.prototype.some.call($("expFmt").options, function (o) { return o.value === x.fmt; })) { $("expFmt").value = x.fmt; updateExportUI(); }
+    if (PAPERS[x.paper]) $("pdfPaper").value = x.paper;
+    if (["150", "200", "300"].indexOf(x.pdpi) >= 0) $("pdfDpi").value = x.pdpi;
+    if (["0", "3", "5"].indexOf(x.bleed) >= 0) $("pdfBleed").value = x.bleed;
+    if (x.marks === "0" || x.marks === "1") $("pdfMarks").value = x.marks;
+    if (["png", "jpg", "mp4", "pdf"].indexOf(x.fmt) >= 0 && Array.prototype.some.call($("expFmt").options, function (o) { return o.value === x.fmt; })) { $("expFmt").value = x.fmt; updateExportUI(); }
     if (typeof x.size === "number" && x.size >= 0 && x.size < $("expSize").options.length) $("expSize").selectedIndex = x.size;
     if (typeof x.dur === "string") $("vidDur").value = x.dur;
     if (x.motion === "turn" || x.motion === "still") $("vidMotion").value = x.motion;
