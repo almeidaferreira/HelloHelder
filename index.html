@@ -1,7 +1,7 @@
 <title>Shoe Poster Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Gloock&family=Hanken+Grotesk:wght@300;800&family=Outfit:wght@300;800&family=Manrope:wght@300;800&family=Archivo:wght@300;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Hanken+Grotesk:wght@300;800&family=Outfit:wght@300;800&family=Manrope:wght@300;800&family=Archivo:wght@300;800&display=swap">
 <style>
 /* Layout: sticky poster stage on the left, collapsible control groups on the right; stacks on phones. */
 :root {
@@ -15,7 +15,7 @@
   --mat: #e7e3ef;
   --field: #f7f5fa;
   --font-ui: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Gloock", Georgia, serif;
+  --font-display: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -34,11 +34,18 @@ body {
   padding-inline: 16px; padding-block: 14px 40px;
 }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 1280px; margin: 0 auto 14px; }
-.top h1 { font-family: var(--font-display); font-weight: 400; font-size: 26px; margin: 0; letter-spacing: -0.01em; }
+.top h1 { font-family: var(--font-display); font-weight: 800; font-size: 26px; margin: 0; letter-spacing: -0.02em; }
 .top p { margin: 0; color: var(--muted); font-size: 13px; }
 .app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; max-width: 1280px; margin: 0 auto; align-items: start; }
 .stage { position: sticky; top: env(safe-area-inset-top, 0px); display: flex; flex-direction: column; gap: 12px; min-width: 0; padding-top: 2px; }
 .mat { background: var(--mat); border-radius: 14px; padding: 22px; display: flex; justify-content: center; }
+.mat.zoomed { display: flex; justify-content: flex-start; align-items: flex-start; height: max(320px, calc(100svh - 300px)); overflow: auto; overscroll-behavior: contain; }
+.mat.zoomed #poster { margin: auto; flex: 0 0 auto; max-width: none; min-width: 0; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { padding: 6px 12px; }
+.zoombar { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.zoombar button { padding: 6px 12px; min-width: 40px; }
+.zoombar .zlabel { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
 #poster {
   display: block; width: min(100%, var(--maxw, 520px), calc((100svh - 330px) * var(--ar, 0.7072))); min-width: 220px; height: auto; aspect-ratio: var(--ar, 0.7072);
   cursor: grab; touch-action: pan-y; box-shadow: 0 18px 50px rgba(30, 10, 60, 0.28); border-radius: 2px; outline-offset: 4px;
@@ -86,7 +93,7 @@ button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accen
 .note { color: var(--muted); font-size: 12px; margin: 0; }
 dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
 dialog::backdrop { background: rgba(10, 5, 25, 0.6); }
-dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 400; font-size: 22px; }
+dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
 .dlg-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 #result { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 #result img { display: block; max-width: 100%; max-height: 52vh; width: auto; height: auto; margin: 0 auto; border-radius: 4px; border: 1px solid var(--line); }
@@ -103,15 +110,25 @@ dialog h2 { margin: 0 0 12px; font-family: var(--font-display); font-weight: 400
 <header class="top">
   <div>
     <h1>Shoe Poster Studio</h1>
-    <p>Spin the shoe, pin a frame, edit the layout, export the poster.</p>
+    <p id="hdrNote">Spin the shoe, pin a frame, edit the layout, export the poster. Changes save automatically in this browser.</p>
   </div>
-  <button class="primary" id="openExport" type="button">Export poster</button>
+  <div class="dlg-actions">
+    <button id="btnResetAll" type="button" title="Forget the saved settings and start again">Reset settings</button>
+    <button class="primary" id="openExport" type="button">Export poster</button>
+  </div>
 </header>
 
 <main class="app">
   <section class="stage" aria-label="Poster preview">
     <div class="mat"><canvas id="poster" width="1414" height="1000" tabindex="0" aria-label="Poster preview with a rotating 3D shoe. Drag to rotate."></canvas></div>
-    <p class="hint">Drag to rotate · scroll to zoom · arrow keys nudge</p>
+    <div class="zoombar" role="group" aria-label="Canvas view zoom">
+      <button type="button" id="vzOut" aria-label="Zoom canvas out">−</button>
+      <span class="zlabel" id="vzLabel">Fit</span>
+      <button type="button" id="vzIn" aria-label="Zoom canvas in">+</button>
+      <button type="button" id="vzFit">Fit</button>
+      <button type="button" id="vz100">100%</button>
+    </div>
+    <p class="hint">Drag to rotate · scroll to resize the shoe · Ctrl or ⌘ + scroll to zoom the canvas</p>
     <div class="transport">
       <button type="button" id="btnSpin">Spin</button>
       <button type="button" id="btnAnim" class="on">Freeze glow</button>
@@ -200,12 +217,26 @@ Calçado</textarea></label>
     </details>
 
     <details open>
+      <summary>Shoes</summary>
+      <div class="fields">
+        <div class="chips" id="shoeChips"></div>
+        <div class="dlg-actions">
+          <button type="button" id="btnAddShoe">Add shoe</button>
+          <button type="button" id="btnRemoveShoe">Remove selected</button>
+          <button type="button" id="btnTrio">Trio layout</button>
+        </div>
+        <p class="note">Click a shoe on the poster, or its chip, to select it. Model, palette, size, tilt and position edit the selected shoe. Shift + drag moves it. Up to 6 shoes.</p>
+      </div>
+    </details>
+
+    <details open>
       <summary>3D shoe</summary>
       <div class="fields">
         <label>Model
           <select id="modelSel">
             <option value="sneaker">Sneaker (real model)</option>
             <option value="flow">Flowing form (generated)</option>
+            <option value="custom">Loaded .obj</option>
           </select>
         </label>
         <div>
@@ -242,14 +273,24 @@ Calçado</textarea></label>
     <label>Format
       <select id="expFmt"><option value="png">PNG (sharp, lossless)</option><option value="jpg">JPG (smaller file)</option></select>
     </label>
+    <div class="grid2" id="vidOpts" hidden>
+      <label>Length
+        <select id="vidDur"><option value="3">3 seconds</option><option value="6" selected>6 seconds</option><option value="10">10 seconds</option><option value="15">15 seconds</option></select>
+      </label>
+      <label>Motion
+        <select id="vidMotion"><option value="turn">Full 360° turn, loops</option><option value="still">Hold the pose, glow only</option></select>
+      </label>
+    </div>
+    <p class="note" id="vidNote" hidden>30 fps H.264 MP4, rendered frame by frame in your browser. Needs a recent Chrome, Edge or Safari.</p>
     <div class="dlg-actions">
-      <button class="primary" type="button" id="expGo">Render image</button>
+      <button class="primary" type="button" id="expGo">Render</button>
       <button type="button" id="expClose">Close</button>
       <span class="note" id="expStatus"></span>
     </div>
   </div>
   <div id="result" hidden>
     <img id="resImg" alt="Exported poster">
+    <video id="resVid" controls loop muted playsinline hidden></video>
     <p class="note">Right-click or long-press the image to save it. If the download button does nothing in this view, use that.</p>
     <div class="dlg-actions">
       <a id="resDl" download="poster.png"><button type="button">Download</button></a>
@@ -259,6 +300,7 @@ Calçado</textarea></label>
 </dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.js"></script>
 <script>
 (function () {
   "use strict";
@@ -274,12 +316,14 @@ Calçado</textarea></label>
     { name: "Ember", c: ["#ff4e00", "#ffb000", "#ff2e63", "#7a1fff", "#ffe3a3"] }
   ];
 
-  var REST = -0.2;
   var intro = null;
-  var st = {
-    sx: -0.75, sy: 0.1, yaw: -0.2, pitch: 0.2, zoom: 1.35, spin: false, speed: 0.5, anim: !reduce, time: 0,
-    layers: 12, wave: 1, glow: 1, palette: 0, dragging: false
-  };
+  var shoes = [], sel = 0, MAXSHOES = 6;
+  function cur() { return shoes[sel]; }
+  var st = { spin: false, speed: 0.5, anim: !reduce, time: 0, layers: 12, wave: 1, glow: 1, dragging: false };
+  // pose properties of the selected shoe read and write through st
+  ["yaw", "pitch", "zoom", "sx", "sy", "palette"].forEach(function (k) {
+    Object.defineProperty(st, k, { get: function () { return cur()[k]; }, set: function (v) { cur()[k] = v; } });
+  });
   var frames = [];
 
   /* ---------- WebGL scene ---------- */
@@ -291,10 +335,6 @@ Calçado</textarea></label>
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(30, PW / PH, 0.1, 50);
   camera.position.set(0, 0, 8.6);
-  var pivot = new THREE.Group();
-  var spinner = new THREE.Group();
-  pivot.add(spinner);
-  scene.add(pivot);
 
   var shared = {
     uTime: { value: 0 }, uWave: { value: 1 }, uSpread: { value: 0.07 }, uGlow: { value: 1 }, uCount: { value: 12 }, uAlphaScale: { value: 1 },
@@ -356,17 +396,15 @@ Calçado</textarea></label>
     "void main(){ float a = 0.2; vec3 c = vec3(0.16, 0.08, 0.30); gl_FragColor = vec4(c, a); }"
   ].join("\n");
 
-  function mkUniforms(i) {
+  function mkUniforms(i, uC) {
     return {
       uShell: { value: i }, uTime: shared.uTime, uWave: shared.uWave, uSpread: shared.uSpread, uGlow: shared.uGlow, uCount: shared.uCount,
-      uAlphaScale: shared.uAlphaScale, uC: shared.uC
+      uAlphaScale: shared.uAlphaScale, uC: uC
     };
   }
 
   var MAXL = 16;
-  var shells = [];
-  var lineMeshes = [];
-  var baseGeo = null, baseLineIdx = null;
+  var baseGeo = null, baseLineIdx = null, baseLineGeo = null;
 
   function interp(pts, u) {
     for (var i = 0; i < pts.length - 1; i++) {
@@ -433,40 +471,64 @@ Calçado</textarea></label>
   (function init() {
     var built = buildShoeGeometry();
     baseGeo = built.geo; baseLineIdx = built.lines;
+    baseLineGeo = makeLineGeo(baseGeo, baseLineIdx);
+  })();
+
+  function createShoe(o) {
+    var sh = {
+      pivot: new THREE.Group(), spinner: new THREE.Group(), shells: [], lines: [],
+      uC: { value: [0, 1, 2, 3, 4].map(function () { return new THREE.Color(); }) },
+      yaw: o.yaw, rest: o.yaw, pitch: o.pitch, zoom: o.zoom, sx: o.sx, sy: o.sy, palette: o.palette || 0,
+      model: o.model || "sneaker", customGeo: null, nx: o.nx || 0, ny: o.ny || 0, zr: o.zr || 1,
+      refl: document.createElement("canvas")
+    };
+    sh.refl.width = 800; sh.refl.height = 200;
+    sh.pivot.add(sh.spinner); scene.add(sh.pivot);
     for (var i = 0; i < MAXL; i++) {
       var m = new THREE.ShaderMaterial({
-        uniforms: mkUniforms(i), vertexShader: VERT, fragmentShader: FRAG,
+        uniforms: mkUniforms(i, sh.uC), vertexShader: VERT, fragmentShader: FRAG,
         transparent: true, depthWrite: false, side: THREE.DoubleSide, extensions: { derivatives: true }
       });
       var mesh = new THREE.Mesh(baseGeo, m);
-      mesh.frustumCulled = false; mesh.renderOrder = i;
-      spinner.add(mesh); shells.push(mesh);
+      mesh.frustumCulled = false;
+      sh.spinner.add(mesh); sh.shells.push(mesh);
     }
-    var lg = makeLineGeo(baseGeo, baseLineIdx);
     [0, 6, 11].forEach(function (k) {
       var lm = new THREE.ShaderMaterial({
-        uniforms: mkUniforms(k), vertexShader: VERT, fragmentShader: LINE_FRAG, transparent: true, depthWrite: false
+        uniforms: mkUniforms(k, sh.uC), vertexShader: VERT, fragmentShader: LINE_FRAG, transparent: true, depthWrite: false
       });
-      var ls = new THREE.LineSegments(lg, lm);
-      ls.frustumCulled = false; ls.renderOrder = 20 + k;
-      spinner.add(ls); lineMeshes.push(ls);
+      var ls = new THREE.LineSegments(baseLineGeo, lm);
+      ls.frustumCulled = false;
+      sh.spinner.add(ls); sh.lines.push(ls);
     });
-  })();
+    shoes.push(sh);
+    reorderShoes(); applyLayers(); applyShoePalette(sh); ensureModel(sh);
+    return sh;
+  }
+
+  // shoes earlier in the list draw in front of later ones
+  function reorderShoes() {
+    shoes.forEach(function (sh, idx) {
+      var base = (50 - idx) * 100;
+      sh.shells.forEach(function (m, i) { m.renderOrder = base + i; });
+      sh.lines.forEach(function (l, i) { l.renderOrder = base + 20 + i; });
+    });
+  }
 
   function applyLayers() {
     var n = st.layers;
     shared.uCount.value = n;
     shared.uAlphaScale.value = Math.min(1.6, 12 / n);
-    shells.forEach(function (m, i) { m.visible = i < n; });
-    lineMeshes.forEach(function (l, i) { l.material.uniforms.uShell.value = [0, Math.floor(n / 2), n - 1][i]; });
+    shoes.forEach(function (sh) {
+      sh.shells.forEach(function (m, i) { m.visible = i < n; });
+      sh.lines.forEach(function (l, i) { l.material.uniforms.uShell.value = [0, Math.floor(n / 2), n - 1][i]; });
+    });
   }
 
-  var reflCanvas = document.createElement("canvas");
-  reflCanvas.width = 800; reflCanvas.height = 200;
-  function applyPalette() {
-    var p = PALETTES[st.palette].c;
-    p.forEach(function (hex, i) { shared.uC.value[i].set(hex); });
-    var r = reflCanvas.getContext("2d");
+  function applyShoePalette(sh) {
+    var p = PALETTES[sh.palette].c;
+    p.forEach(function (hex, i) { sh.uC.value[i].set(hex); });
+    var r = sh.refl.getContext("2d");
     r.clearRect(0, 0, 800, 200);
     var lg = r.createLinearGradient(0, 0, 800, 0);
     p.concat([p[0]]).forEach(function (hex, i) { lg.addColorStop(i / 5, hex); });
@@ -479,7 +541,10 @@ Calçado</textarea></label>
     r.fillStyle = rg; r.fillRect(-400, -400, 800, 800);
     r.restore();
     r.globalCompositeOperation = "source-over";
-    document.querySelectorAll(".sw").forEach(function (b, i) { b.classList.toggle("on", i === st.palette); });
+  }
+  function applyPalette() {
+    applyShoePalette(cur());
+    document.querySelectorAll(".sw").forEach(function (b, i) { b.classList.toggle("on", i === cur().palette); });
   }
 
   /* ---------- OBJ loading ---------- */
@@ -521,9 +586,18 @@ Calçado</textarea></label>
     for (var i = 0; i < q.length; i++) { k = i % 3; pos[i] = SNEAKER.mn[k] + q[i] / 65535 * (SNEAKER.mx[k] - SNEAKER.mn[k]); }
     return geometryFromOBJ({ pos: pos, idx: Array.prototype.slice.call(ix) });
   }
-  function setModel(geo, showLines) {
-    shells.forEach(function (m) { m.geometry = geo; });
-    lineMeshes.forEach(function (l) { l.visible = showLines; });
+  var sneakerGeo = null;
+  function setShoeGeo(sh, geo, showLines) {
+    sh.shells.forEach(function (m) { m.geometry = geo; });
+    sh.lines.forEach(function (l) { l.visible = showLines; });
+  }
+  function setModel(geo, showLines) { setShoeGeo(cur(), geo, showLines); }
+  function ensureModel(sh) {
+    var m = sh.model;
+    if (m === "custom" && !sh.customGeo) m = sh.model = "sneaker";
+    if (m === "sneaker") { if (!sneakerGeo) sneakerGeo = sneakerGeometry(); setShoeGeo(sh, sneakerGeo, false); }
+    else if (m === "flow") setShoeGeo(sh, baseGeo, true);
+    else setShoeGeo(sh, sh.customGeo, false);
   }
 
   /* ---------- Poster drawing (units follow the chosen format) ---------- */
@@ -546,12 +620,23 @@ Calçado</textarea></label>
   function setLS(ctx, px) { if ("letterSpacing" in ctx) ctx.letterSpacing = px + "px"; }
 
   function shoeDefaults() {
-    var f = FORMATS[sty.fmt], p = POS[sty.pos], h = p[0], v = p[1];
-    st.sx = f.sx ? -h * f.sx : 0;
-    st.sy = h === 0 ? f.tc : f.sy[v === 0 ? 0 : (v === 1 ? 2 : 1)];
-    $("sx").value = st.sx; $("sxVal").textContent = st.sx.toFixed(2);
-    $("sy").value = st.sy; $("syVal").textContent = st.sy.toFixed(2);
+    var f = FORMATS[sty.fmt], p = POS[sty.pos], h = p[0], v = p[1], s0 = shoes[0];
+    s0.sx = f.sx ? -h * f.sx : 0;
+    s0.sy = h === 0 ? f.tc : f.sy[v === 0 ? 0 : (v === 1 ? 2 : 1)];
   }
+
+  /* extra shoes keep their place relative to the first one, in fractions of the frame */
+  function frustum() { var fh = 2 * camera.position.z * Math.tan(15 * Math.PI / 180); return { w: fh * PW / PH, h: fh }; }
+  function applyRel(sh) {
+    var s0 = shoes[0], fr = frustum();
+    sh.sx = s0.sx + sh.nx * fr.w; sh.sy = s0.sy + sh.ny * fr.h; sh.zoom = s0.zoom * sh.zr;
+  }
+  function applyRelAll() { for (var i = 1; i < shoes.length; i++) applyRel(shoes[i]); }
+  function updateRel(sh) {
+    var s0 = shoes[0], fr = frustum();
+    sh.nx = (sh.sx - s0.sx) / fr.w; sh.ny = (sh.sy - s0.sy) / fr.h; sh.zr = sh.zoom / s0.zoom;
+  }
+  function poseChanged() { if (sel > 0) { updateRel(cur()); layoutMode = null; } }
 
   function logoScale() { return Math.min(1.15 * Math.min(PW, PH) / 1000, (PW - 2 * MARGIN) / 1000); }
 
@@ -641,8 +726,8 @@ Calçado</textarea></label>
   }
 
   var projV = new THREE.Vector3();
-  function shoeScreen() {
-    projV.set(st.sx, st.sy, 0).project(camera);
+  function shoeScreen(sh) {
+    projV.set(sh.sx, sh.sy, -shoes.indexOf(sh) * 0.35).project(camera);
     var fw = 2 * camera.position.z * Math.tan(15 * Math.PI / 180) * (PW / PH);
     return { x: (projV.x + 1) / 2 * PW, y: (1 - projV.y) / 2 * PH, pxPerUnit: PW / fw };
   }
@@ -658,17 +743,18 @@ Calçado</textarea></label>
     fg.addColorStop(0, "rgba(255,255,255,0.65)"); fg.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = fg; ctx.fillRect(-PW, -PW, PW * 2, PW * 2); ctx.restore();
 
-    var sc = shoeScreen(), pal = PALETTES[st.palette].c;
-    var br = 2.3 * sc.pxPerUnit * st.zoom;
-    var bloom = ctx.createRadialGradient(sc.x, sc.y, 0, sc.x, sc.y, br);
-    bloom.addColorStop(0, hexA(pal[2], 0.18 * st.glow)); bloom.addColorStop(0.6, hexA(pal[0], 0.07 * st.glow)); bloom.addColorStop(1, hexA(pal[0], 0));
-    ctx.fillStyle = bloom; ctx.fillRect(0, 0, PW, PH);
-
-    // coloured reflection on the floor
-    var rw = 3.7 * sc.pxPerUnit * st.zoom, rh = rw / 4;
-    ctx.globalAlpha = Math.min(1, 0.75 * st.glow);
-    ctx.drawImage(reflCanvas, sc.x - rw / 2, sc.y + 0.95 * sc.pxPerUnit * st.zoom - rh / 2, rw, rh);
-    ctx.globalAlpha = 1;
+    for (var si = shoes.length - 1; si >= 0; si--) {
+      var sh = shoes[si], sc = shoeScreen(sh), pal = PALETTES[sh.palette].c;
+      var br = 2.3 * sc.pxPerUnit * sh.zoom;
+      var bloom = ctx.createRadialGradient(sc.x, sc.y, 0, sc.x, sc.y, br);
+      bloom.addColorStop(0, hexA(pal[2], 0.18 * st.glow)); bloom.addColorStop(0.6, hexA(pal[0], 0.07 * st.glow)); bloom.addColorStop(1, hexA(pal[0], 0));
+      ctx.fillStyle = bloom; ctx.fillRect(0, 0, PW, PH);
+      // coloured reflection on the floor
+      var rw = 3.7 * sc.pxPerUnit * sh.zoom, rh = rw / 4;
+      ctx.globalAlpha = Math.min(1, 0.75 * st.glow);
+      ctx.drawImage(sh.refl, sc.x - rw / 2, sc.y + 0.95 * sc.pxPerUnit * sh.zoom - rh / 2, rw, rh);
+      ctx.globalAlpha = 1;
+    }
 
     ctx.drawImage(gl, 0, 0, PW, PH);
 
@@ -677,15 +763,18 @@ Calçado</textarea></label>
     ctx.restore();
   }
 
-  function setFormat(key) {
+  function setFormat(key, keep) {
     var f = FORMATS[key]; sty.fmt = key; PW = f.w; PH = f.h; MARGIN = 60 * Math.min(PW, PH) / 1000;
     renderer.setSize(PW, PH, false);
     camera.aspect = PW / PH; camera.position.z = f.d; camera.updateProjectionMatrix();
     poster.width = PW; poster.height = PH;
     poster.style.setProperty("--ar", String(PW / PH)); poster.style.setProperty("--maxw", f.maxw);
-    sty.hs = sty.ss = f.size; $("hs").value = $("ss").value = f.size; $("hsVal").textContent = $("ssVal").textContent = String(f.size);
-    st.zoom = f.zoom; $("zoom").value = f.zoom; $("zoomVal").textContent = f.zoom.toFixed(2);
-    shoeDefaults(); buildExportOptions();
+    if (!keep) {
+      sty.hs = sty.ss = f.size; $("hs").value = $("ss").value = f.size; $("hsVal").textContent = $("ssVal").textContent = String(f.size);
+      shoes[0].zoom = f.zoom;
+      shoeDefaults(); relayout(); syncShoeUI();
+    }
+    buildExportOptions(); if (view !== null) applyView();
   }
 
   function buildExportOptions() {
@@ -696,6 +785,13 @@ Calçado</textarea></label>
     ] : [
       [1, "Platform native", 96], [2, "2x for crisp scaling", 96]
     ];
+    var fsel = $("expFmt"), keep = fsel.value;
+    fsel.textContent = "";
+    (isPoster ? [["png", "PNG (sharp, lossless)"], ["jpg", "JPG (smaller file)"]] : [["png", "PNG image (sharp, lossless)"], ["mp4", "MP4 video (turntable)"], ["jpg", "JPG image (smaller file)"]]).forEach(function (f) {
+      var op = document.createElement("option"); op.value = f[0]; op.textContent = f[1]; fsel.appendChild(op);
+    });
+    fsel.value = Array.prototype.some.call(fsel.options, function (o) { return o.value === keep; }) ? keep : "png";
+    updateExportUI();
     sel.textContent = "";
     opts.forEach(function (o) {
       var op = document.createElement("option");
@@ -705,18 +801,63 @@ Calçado</textarea></label>
     });
   }
 
+  function updateExportUI() {
+    var v = $("expFmt").value === "mp4";
+    $("vidOpts").hidden = !v; $("vidNote").hidden = !v;
+    $("expGo").textContent = v ? "Render video" : "Render image";
+  }
+
   function hexA(hex, a) {
     var h = hex.replace("#", ""); if (h.length === 3) h = h.replace(/(.)/g, "$1$1");
     return "rgba(" + parseInt(h.slice(0, 2), 16) + "," + parseInt(h.slice(2, 4), 16) + "," + parseInt(h.slice(4, 6), 16) + "," + a + ")";
   }
+
+  /* ---------- Canvas view zoom ---------- */
+  var VSTEPS = [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3];
+  var view = null; // null = fit, otherwise css px per canvas px
+  function applyView() {
+    var mat = poster.parentNode;
+    if (view === null) {
+      poster.style.width = ""; mat.classList.remove("zoomed");
+      $("vzLabel").textContent = "Fit";
+    } else {
+      mat.classList.add("zoomed"); poster.style.width = Math.round(PW * view) + "px";
+      $("vzLabel").textContent = Math.round(view * 100) + "%";
+    }
+    $("vzFit").classList.toggle("on", view === null); $("vz100").classList.toggle("on", view === 1);
+  }
+  function currentScale() { return poster.getBoundingClientRect().width / PW; }
+  function stepView(dir) {
+    var cur = view === null ? currentScale() : view, next = cur, i;
+    if (dir > 0) { for (i = 0; i < VSTEPS.length; i++) if (VSTEPS[i] > cur + 0.01) { next = VSTEPS[i]; break; } if (next === cur) next = VSTEPS[VSTEPS.length - 1]; }
+    else { for (i = VSTEPS.length - 1; i >= 0; i--) if (VSTEPS[i] < cur - 0.01) { next = VSTEPS[i]; break; } if (next === cur) next = VSTEPS[0]; }
+    setView(next);
+  }
+  function setView(v) {
+    var mat = poster.parentNode, wasFit = view === null;
+    // keep the visible centre steady while zooming
+    var cx = (mat.scrollLeft + mat.clientWidth / 2) / (poster.getBoundingClientRect().width + 1), cy = (mat.scrollTop + mat.clientHeight / 2) / (poster.getBoundingClientRect().height + 1);
+    view = v; applyView();
+    if (v !== null) {
+      if (wasFit) { cx = 0.5; cy = 0.5; }
+      mat.scrollLeft = cx * poster.getBoundingClientRect().width - mat.clientWidth / 2;
+      mat.scrollTop = cy * poster.getBoundingClientRect().height - mat.clientHeight / 2;
+    }
+  }
+  $("vzIn").addEventListener("click", function () { stepView(1); });
+  $("vzOut").addEventListener("click", function () { stepView(-1); });
+  $("vzFit").addEventListener("click", function () { setView(null); });
+  $("vz100").addEventListener("click", function () { setView(1); });
 
   /* ---------- Frame loop ---------- */
   var poster = $("poster"), pctx = poster.getContext("2d");
   var last = performance.now(), vel = 0;
 
   function syncPose() {
-    pivot.rotation.x = st.pitch; pivot.rotation.z = -0.1; spinner.rotation.y = st.yaw;
-    pivot.scale.setScalar(st.zoom); pivot.position.set(st.sx, st.sy, 0);
+    shoes.forEach(function (sh, i) {
+      sh.pivot.rotation.x = sh.pitch; sh.pivot.rotation.z = -0.1; sh.spinner.rotation.y = sh.yaw;
+      sh.pivot.scale.setScalar(sh.zoom); sh.pivot.position.set(sh.sx, sh.sy, -i * 0.35);
+    });
   }
   function renderScene() { syncPose(); renderer.render(scene, camera); }
 
@@ -727,17 +868,24 @@ Calçado</textarea></label>
     if (document.activeElement !== yawEl) yawEl.value = Math.round(deg);
   }
 
+  var exporting = false;
   function frame(now) {
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (exporting) { requestAnimationFrame(frame); return; }
     if (st.anim) st.time += dt;
     if (intro && !st.dragging) {
       intro.t += dt;
-      var k = Math.min(1, intro.t / intro.dur), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
-      st.yaw = intro.from + (intro.to - intro.from) * e; vel = 0;
-      if (k >= 1) { st.yaw = intro.to; intro = null; setSpin(false); }
+      var n = shoes.length;
+      shoes.forEach(function (sh, i) {
+        var k = Math.max(0, Math.min(1, (intro.t - i * 0.3) / intro.dur));
+        var e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        sh.yaw = sh.rest - 2 * Math.PI * (1 - e);
+      });
+      vel = 0;
+      if (intro.t >= intro.dur + (n - 1) * 0.3) { shoes.forEach(function (sh) { sh.yaw = sh.rest; }); intro = null; setSpin(false); }
     } else if (!st.dragging) {
-      if (st.spin) st.yaw += st.speed * dt;
-      st.yaw += vel * dt; vel *= Math.pow(0.04, dt);
+      if (st.spin) shoes.forEach(function (sh) { sh.yaw += st.speed * dt; });
+      cur().yaw += vel * dt; vel *= Math.pow(0.04, dt);
       if (Math.abs(vel) < 0.01) vel = 0;
     }
     shared.uTime.value = st.time;
@@ -750,14 +898,29 @@ Calçado</textarea></label>
 
   /* ---------- Interaction ---------- */
   var lastX = 0, lastY = 0, lastT = 0;
+  var moveMode = false;
   poster.addEventListener("pointerdown", function (e) {
     intro = null; st.dragging = true; lastX = e.clientX; lastY = e.clientY; lastT = performance.now(); vel = 0;
+    moveMode = e.shiftKey;
+    if (shoes.length > 1) {
+      var r = poster.getBoundingClientRect(), px = (e.clientX - r.left) * PW / r.width, py = (e.clientY - r.top) * PH / r.height, best = sel, bd = 1e12;
+      shoes.forEach(function (sh, i) {
+        var c = shoeScreen(sh), d = Math.hypot(px - c.x, py - c.y) / (sh.zoom * c.pxPerUnit);
+        if (d < bd) { bd = d; best = i; }
+      });
+      if (best !== sel) selectShoe(best);
+    }
     try { poster.setPointerCapture(e.pointerId); } catch (err) {}
   });
   poster.addEventListener("pointermove", function (e) {
     if (!st.dragging) return;
     var k = PW / poster.getBoundingClientRect().width;
     var dx = (e.clientX - lastX) * k, dy = (e.clientY - lastY) * k, now = performance.now();
+    if (moveMode) {
+      var sc = shoeScreen(cur());
+      st.sx += dx / sc.pxPerUnit; st.sy -= dy / sc.pxPerUnit; poseChanged(); syncSliders();
+      lastX = e.clientX; lastY = e.clientY; lastT = now; return;
+    }
     st.yaw += dx * 0.0085; st.pitch = Math.max(-0.4, Math.min(1.0, st.pitch + dy * 0.004));
     var dtm = Math.max(1, now - lastT) / 1000; vel = Math.max(-6, Math.min(6, dx * 0.0085 / dtm));
     lastX = e.clientX; lastY = e.clientY; lastT = now;
@@ -767,9 +930,10 @@ Calçado</textarea></label>
   poster.addEventListener("pointerup", endDrag);
   poster.addEventListener("pointercancel", endDrag);
   poster.addEventListener("wheel", function (e) {
+    if (e.ctrlKey || e.metaKey) { e.preventDefault(); stepView(e.deltaY < 0 ? 1 : -1); return; }
     e.preventDefault();
     st.zoom = Math.max(0.3, Math.min(3, st.zoom * (e.deltaY > 0 ? 0.96 : 1.04)));
-    $("zoom").value = st.zoom; $("zoomVal").textContent = st.zoom.toFixed(2);
+    $("zoom").value = st.zoom; $("zoomVal").textContent = st.zoom.toFixed(2); poseChanged();
   }, { passive: false });
   poster.addEventListener("keydown", function (e) {
     if (e.key === "ArrowLeft") { st.yaw -= 0.1; e.preventDefault(); }
@@ -782,7 +946,7 @@ Calçado</textarea></label>
   function bindText(id, key, obj) { $(id).addEventListener("input", function (e) { obj[key] = e.target.value; }); }
   bindText("headline", "headline", tx); bindText("subline", "subline", tx);
   bindText("tcol", "ink", sty); bindText("bgTop", "bgTop", sty); bindText("bgBot", "bgBot", sty);
-  $("pos").addEventListener("change", function (e) { sty.pos = e.target.value; shoeDefaults(); });
+  $("pos").addEventListener("change", function (e) { sty.pos = e.target.value; shoeDefaults(); relayout(); syncShoeUI(); });
   $("fmt").addEventListener("change", function (e) { setFormat(e.target.value); });
   $("showLogos").addEventListener("change", function (e) { sty.logos = e.target.checked; });
   $("btnLogos").addEventListener("click", function () { $("logoFiles").click(); });
@@ -803,11 +967,11 @@ Calçado</textarea></label>
     });
     Promise.all(jobs).then(function () {
       var ok = loaded.filter(Boolean);
-      if (ok.length) { userLogos = ok; sty.logos = true; $("showLogos").checked = true; $("logoNote").textContent = ok.length + " logo" + (ok.length > 1 ? "s" : "") + " added, spaced evenly in the order you picked them."; }
+      if (ok.length) { userLogos = ok; markExtras(); sty.logos = true; $("showLogos").checked = true; $("logoNote").textContent = ok.length + " logo" + (ok.length > 1 ? "s" : "") + " added, spaced evenly in the order you picked them."; }
       else $("logoNote").textContent = "Those files could not be read as images. Try PNG or SVG.";
     });
   });
-  $("btnClearLogos").addEventListener("click", function () { userLogos = []; $("logoNote").textContent = "Showing the typographic stand-ins again."; });
+  $("btnClearLogos").addEventListener("click", function () { userLogos = []; markExtras(); $("logoNote").textContent = "Showing the typographic stand-ins again."; });
 
   function bindRange(id, valId, fn, digits) {
     $(id).addEventListener("input", function (e) {
@@ -818,27 +982,29 @@ Calçado</textarea></label>
   bindRange("hs", "hsVal", function (v) { sty.hs = v; }, 0);
   bindRange("ss", "ssVal", function (v) { sty.ss = v; }, 0);
   var customFonts = { 800: null, 300: null };
+  function useCustomFontBuffer(weight, buf, name, quiet) {
+    customFonts[weight] = { buf: buf, name: name };
+    var other = weight === 800 ? 300 : 800, jobs = [];
+    // a single file covers both weights until the other one is supplied
+    [weight].concat(customFonts[other] ? [] : [other]).forEach(function (w) {
+      var face = new FontFace("Custom Upload", buf.slice(0), { weight: String(w) });
+      jobs.push(face.load().then(function (f) { document.fonts.add(f); }));
+    });
+    return Promise.all(jobs).then(function () {
+      var sel2 = $("fontSel");
+      if (!sel2.querySelector('option[value="Custom Upload"]')) {
+        var op = document.createElement("option"); op.value = "Custom Upload"; op.textContent = "Custom upload"; sel2.appendChild(op);
+      }
+      if (!quiet) { sel2.value = "Custom Upload"; sty.font = "Custom Upload"; }
+      $("fontNote").textContent = "Using " + name + " for " + (weight === 800 ? "bold" : "light") + (customFonts[other] ? ", and " + customFonts[other].name + " for " + (weight === 800 ? "light" : "bold") + "." : " (also used for the other weight until you add a second file).");
+      markExtras();
+    });
+  }
   function loadCustomFont(weight, file) {
     if (!file) return;
     var rd = new FileReader();
     rd.onload = function () {
-      var buf = rd.result;
-      var jobs = [];
-      customFonts[weight] = { buf: buf, name: file.name };
-      var other = weight === 800 ? 300 : 800;
-      // a single file covers both weights until the other one is supplied
-      [weight].concat(customFonts[other] ? [] : [other]).forEach(function (w) {
-        var face = new FontFace("Custom Upload", buf.slice(0), { weight: String(w) });
-        jobs.push(face.load().then(function (f) { document.fonts.add(f); }));
-      });
-      Promise.all(jobs).then(function () {
-        var sel = $("fontSel");
-        if (!sel.querySelector('option[value="Custom Upload"]')) {
-          var op = document.createElement("option"); op.value = "Custom Upload"; op.textContent = "Custom upload"; sel.appendChild(op);
-        }
-        sel.value = "Custom Upload"; sty.font = "Custom Upload";
-        $("fontNote").textContent = "Using " + file.name + " for " + (weight === 800 ? "bold" : "light") + (customFonts[other] ? ", and " + customFonts[other].name + " for " + (weight === 800 ? "light" : "bold") + "." : " (also used for the other weight until you add a second file).");
-      }).catch(function () { $("fontNote").textContent = "That file could not be read as a font. Try a TTF, OTF, WOFF or WOFF2 file."; });
+      useCustomFontBuffer(weight, rd.result, file.name).catch(function () { $("fontNote").textContent = "That file could not be read as a font. Try a TTF, OTF, WOFF or WOFF2 file."; });
     };
     rd.readAsArrayBuffer(file);
   }
@@ -847,19 +1013,24 @@ Calçado</textarea></label>
   $("fontFileB").addEventListener("change", function (e) { loadCustomFont(800, e.target.files[0]); e.target.value = ""; });
   $("fontFileL").addEventListener("change", function (e) { loadCustomFont(300, e.target.files[0]); e.target.value = ""; });
   $("fontSel").addEventListener("change", function (e) { sty.font = e.target.value; try { document.fonts.load("800 40px '" + sty.font + "'"); document.fonts.load("300 40px '" + sty.font + "'"); } catch (er) {} });
-  bindRange("sx", "sxVal", function (v) { st.sx = v; }, 2);
-  bindRange("sy", "syVal", function (v) { st.sy = v; }, 2);
+  bindRange("sx", "sxVal", function (v) { st.sx = v; poseChanged(); }, 2);
+  bindRange("sy", "syVal", function (v) { st.sy = v; poseChanged(); }, 2);
   bindRange("sp", "spVal", function (v) { st.speed = v; }, 2);
   bindRange("tilt", "tiltVal", function (v) { st.pitch = v; }, 2);
-  bindRange("zoom", "zoomVal", function (v) { st.zoom = v; }, 2);
+  bindRange("zoom", "zoomVal", function (v) { st.zoom = v; poseChanged(); }, 2);
   bindRange("layers", "layersVal", function (v) { st.layers = v; applyLayers(); }, 0);
   bindRange("spread", "spreadVal", function (v) { shared.uSpread.value = v; }, 2);
   bindRange("wave", "waveVal", function (v) { st.wave = v; shared.uWave.value = v; }, 1);
   bindRange("glow", "glowVal", function (v) { st.glow = v; shared.uGlow.value = v; }, 1);
 
   function playIntro() {
-    if (reduce) { st.yaw = REST; return; }
-    intro = { t: 0, dur: 5, from: REST - 2 * Math.PI, to: REST }; st.yaw = intro.from; setSpin(false);
+    if (intro) shoes.forEach(function (sh) { sh.yaw = sh.rest; });
+    intro = null;
+    shoes.forEach(function (sh) { sh.rest = sh.yaw; });
+    if (reduce) return;
+    intro = { t: 0, dur: 5 };
+    shoes.forEach(function (sh) { sh.yaw = sh.rest - 2 * Math.PI; });
+    setSpin(false);
   }
   function setSpin(on) { if (on) intro = null; st.spin = on; var b = $("btnSpin"); b.textContent = on ? "Pause spin" : "Spin"; b.classList.toggle("on", on); }
   function setAnim(on) { st.anim = on; var b = $("btnAnim"); b.textContent = on ? "Freeze glow" : "Animate glow"; b.classList.toggle("on", on); }
@@ -874,13 +1045,76 @@ Calçado</textarea></label>
     var b = document.createElement("button");
     b.type = "button"; b.className = "sw"; b.title = p.name; b.setAttribute("aria-label", p.name + " palette");
     b.style.background = "linear-gradient(90deg," + p.c.join(",") + ")";
-    b.addEventListener("click", function () { st.palette = i; applyPalette(); });
+    b.addEventListener("click", function () { cur().palette = i; applyPalette(); });
     sw.appendChild(b);
+  });
+
+  /* ---------- Shoes: select, add, remove ---------- */
+  var OFFS = [[0, 0, 1], [0.3, 0.1, 0.6], [0.16, -0.2, 0.5], [0.4, -0.2, 0.45], [0, 0.26, 0.5], [0.46, 0.2, 0.4]];
+  function syncSliders() {
+    $("tilt").value = st.pitch; $("tiltVal").textContent = st.pitch.toFixed(2);
+    $("zoom").value = st.zoom; $("zoomVal").textContent = st.zoom.toFixed(2);
+    $("sx").value = st.sx; $("sxVal").textContent = st.sx.toFixed(2);
+    $("sy").value = st.sy; $("syVal").textContent = st.sy.toFixed(2);
+  }
+  function renderChips() {
+    var box = $("shoeChips"); box.textContent = "";
+    shoes.forEach(function (sh, i) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (i === sel ? " on" : "");
+      b.textContent = "Shoe " + (i + 1); b.addEventListener("click", function () { selectShoe(i); });
+      box.appendChild(b);
+    });
+    $("btnAddShoe").disabled = shoes.length >= MAXSHOES; $("btnRemoveShoe").disabled = shoes.length <= 1;
+  }
+  function syncShoeUI() {
+    syncSliders();
+    $("modelSel").value = cur().model;
+    applyPalette(); renderChips();
+  }
+  function selectShoe(i) { sel = Math.max(0, Math.min(shoes.length - 1, i)); vel = 0; syncShoeUI(); }
+  function addShoe(quiet) {
+    if (shoes.length >= MAXSHOES) return null;
+    layoutMode = null;
+    var base = shoes[0], i = shoes.length, o = OFFS[i] || OFFS[OFFS.length - 1];
+    var sh = createShoe({ yaw: base.yaw + 0.9 * i, pitch: base.pitch, zoom: base.zoom * o[2], sx: base.sx, sy: base.sy, palette: i % PALETTES.length, model: base.model === "custom" ? "sneaker" : base.model, nx: o[0], ny: o[1], zr: o[2] });
+    sh.rest = sh.yaw; applyRel(sh);
+    if (!quiet) selectShoe(i); else renderChips();
+    return sh;
+  }
+  function removeShoe(i) {
+    if (shoes.length <= 1) return;
+    layoutMode = null;
+    var sh = shoes[i];
+    scene.remove(sh.pivot);
+    shoes.splice(i, 1);
+    if (sel >= shoes.length) sel = shoes.length - 1;
+    reorderShoes(); syncShoeUI();
+  }
+  $("btnAddShoe").addEventListener("click", function () { addShoe(false); });
+  $("btnRemoveShoe").addEventListener("click", function () { removeShoe(sel); });
+  // Trio: a row of three for wide frames, a staggered stack for tall ones (assumes copy at the top)
+  function trioLayout() {
+    var wide = PW >= PH * 1.2, f = FORMATS[sty.fmt], fr = frustum(), s0 = shoes[0];
+    var T = wide ? [[0.28, 0.04, 0.78], [0.53, 0.08, 0.6]] : [[0.26, -0.14, 0.8], [0.0, -0.28, 0.65]];
+    s0.zoom = f.zoom * (wide ? 0.7 : 0.63);
+    s0.sx = (wide ? -0.23 : -0.12) * fr.w; s0.sy = (wide ? -0.1 : -0.02) * fr.h;
+    for (var i = 1; i < 3; i++) {
+      var sh = shoes[i]; sh.nx = T[i - 1][0]; sh.ny = T[i - 1][1]; sh.zr = T[i - 1][2];
+      sh.palette = i; sh.yaw = sh.rest = s0.yaw + 0.9 * i; applyShoePalette(sh); applyRel(sh);
+    }
+  }
+  var layoutMode = null;
+  function relayout() { if (layoutMode === "trio" && shoes.length === 3) trioLayout(); else applyRelAll(); }
+  $("btnTrio").addEventListener("click", function () {
+    while (shoes.length > 3) removeShoe(shoes.length - 1);
+    while (shoes.length < 3) addShoe(true);
+    layoutMode = "trio"; trioLayout(); selectShoe(0);
   });
 
   /* pinned frames */
   var framesEl = $("frames");
   function renderFrames() {
+    markExtras();
     framesEl.textContent = "";
     if (!frames.length) {
       var s = document.createElement("span"); s.className = "empty";
@@ -895,9 +1129,15 @@ Calçado</textarea></label>
       x.addEventListener("click", function (e) { e.stopPropagation(); frames.splice(i, 1); renderFrames(); });
       b.appendChild(im); b.appendChild(sp); b.appendChild(x);
       b.addEventListener("click", function () {
-        intro = null; st.yaw = f.yaw; st.pitch = f.pitch; st.zoom = f.zoom; st.time = f.time; vel = 0; setSpin(false); setAnim(false);
-        $("tilt").value = st.pitch; $("tiltVal").textContent = st.pitch.toFixed(2);
-        $("zoom").value = st.zoom; $("zoomVal").textContent = st.zoom.toFixed(2);
+        intro = null; st.time = f.time; vel = 0; setSpin(false); setAnim(false);
+        while (shoes.length < f.shoes.length && shoes.length < MAXSHOES) addShoe(true);
+        while (shoes.length > f.shoes.length) removeShoe(shoes.length - 1);
+        f.shoes.forEach(function (p, i) {
+          var sh = shoes[i]; sh.yaw = p.yaw; sh.pitch = p.pitch; sh.zoom = p.zoom; sh.sx = p.sx; sh.sy = p.sy;
+          if (sh.palette !== p.palette) { sh.palette = p.palette; applyShoePalette(sh); }
+          if (sh.model !== p.model && p.model !== "custom") { sh.model = p.model; ensureModel(sh); }
+        });
+        syncShoeUI();
       });
       framesEl.appendChild(b);
     });
@@ -906,7 +1146,7 @@ Calçado</textarea></label>
     var t = document.createElement("canvas"); t.width = 156; t.height = Math.round(156 * PH / PW);
     t.getContext("2d").drawImage(poster, 0, 0, t.width, t.height);
     var deg = Math.round(((st.yaw * 180 / Math.PI) % 360 + 360) % 360);
-    frames.push({ yaw: st.yaw, pitch: st.pitch, zoom: st.zoom, time: st.time, deg: deg, thumb: t.toDataURL("image/jpeg", 0.75) });
+    frames.push({ shoes: shoes.map(function (sh) { return { yaw: sh.yaw, pitch: sh.pitch, zoom: sh.zoom, sx: sh.sx, sy: sh.sy, palette: sh.palette, model: sh.model }; }), time: st.time, deg: deg, thumb: t.toDataURL("image/jpeg", 0.75) });
     renderFrames();
   });
 
@@ -919,19 +1159,19 @@ Calçado</textarea></label>
       try {
         var o = parseOBJ(String(rd.result));
         if (o.pos.length < 9 || o.idx.length < 3) throw new Error("No mesh found in this file.");
-        setModel(geometryFromOBJ(o), false);
+        var g = geometryFromOBJ(o); cur().customGeo = g; cur().model = "custom"; setModel(g, false);
+        $("modelSel").value = "custom";
         $("objNote").textContent = "Loaded " + f.name + " (" + (o.pos.length / 3) + " vertices). Use Reset shoe to return to the built-in shoe.";
       } catch (err) { $("objNote").textContent = "Could not read that file: " + err.message; }
     };
     rd.readAsText(f); e.target.value = "";
   });
   var NOTE = 'Sneaker model: "Materials Variants Shoe" by Shopify, CC BY 4.0. Load your own OBJ to wrap the same glowing layers around it (beta, works best with a single closed mesh).';
-  var sneakerGeo = null;
   function applyModel() {
-    if ($("modelSel").value === "sneaker") {
-      if (!sneakerGeo) sneakerGeo = sneakerGeometry();
-      setModel(sneakerGeo, false);
-    } else setModel(baseGeo, true);
+    var sh = cur();
+    sh.model = $("modelSel").value;
+    ensureModel(sh);
+    $("modelSel").value = sh.model;
     $("objNote").textContent = NOTE;
   }
   $("modelSel").addEventListener("change", applyModel);
@@ -943,6 +1183,7 @@ Calçado</textarea></label>
   $("openExport").addEventListener("click", function () {
     if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", "");
   });
+  $("expFmt").addEventListener("change", updateExportUI);
   $("expClose").addEventListener("click", function () { if (dlg.close) dlg.close(); else dlg.removeAttribute("open"); });
 
   var crcT = null;
@@ -972,7 +1213,10 @@ Calçado</textarea></label>
   $("expGo").addEventListener("click", function () {
     var opt = $("expSize").selectedOptions[0], scale = parseFloat(opt.value), dpi = parseInt(opt.getAttribute("data-dpi") || "96", 10);
     var fmt = $("expFmt").value, w = Math.round(PW * scale), h = Math.round(PH * scale);
-    var status = $("expStatus"); status.textContent = "Rendering " + w + " × " + h + "…";
+    var status = $("expStatus");
+    if (fmt === "mp4") { exportVideo(scale, status); return; }
+    $("resVid").hidden = true; $("resImg").hidden = false; $("resCopy").hidden = false;
+    status.textContent = "Rendering " + w + " × " + h + "…";
     $("expGo").disabled = true;
     setTimeout(function () {
       try {
@@ -1001,6 +1245,72 @@ Calçado</textarea></label>
       }
     }, 30);
   });
+  function pickCodec(w, h, fps) {
+    var mbs = Math.ceil(w / 16) * Math.ceil(h / 16), bitrate = Math.round(w * h * fps * 0.14);
+    var cands = [["avc", mbs > 8160 ? "avc1.640033" : "avc1.640028"], ["vp9", "vp09.00.50.08"], ["av1", "av01.0.12M.08"]];
+    var i = 0;
+    function next() {
+      if (i >= cands.length) return Promise.resolve(null);
+      var c = cands[i++], cfg = { codec: c[1], width: w, height: h, bitrate: bitrate, framerate: fps };
+      return VideoEncoder.isConfigSupported(cfg).then(function (r) { return r && r.supported ? { mux: c[0], cfg: cfg } : next(); }, next);
+    }
+    return next();
+  }
+
+  function exportVideo(scale, status) {
+    if (!window.VideoEncoder || !window.VideoFrame || !window.Mp4Muxer) {
+      status.textContent = "Video export is not available in this browser. Use a recent Chrome, Edge or Safari, or export a PNG."; return;
+    }
+    var fps = 30, secs = parseInt($("vidDur").value, 10), turn = $("vidMotion").value === "turn", N = secs * fps;
+    var w = (Math.round(PW * scale) >> 1) << 1, h = (Math.round(PH * scale) >> 1) << 1;
+    $("expGo").disabled = true; status.textContent = "Checking video support…";
+    pickCodec(w, h, fps).then(function (pc) {
+      if (!pc) { status.textContent = "This browser cannot encode video at " + w + " × " + h + ". Try the smaller size or a PNG."; $("expGo").disabled = false; return; }
+      var muxer = new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: pc.mux, width: w, height: h }, fastStart: "in-memory" });
+      var failed = null;
+      var enc = new VideoEncoder({ output: function (chunk, meta) { muxer.addVideoChunk(chunk, meta); }, error: function (e) { failed = e; } });
+      enc.configure(pc.cfg);
+      var oc = document.createElement("canvas"); oc.width = w; oc.height = h;
+      var octx = oc.getContext("2d");
+      var savedYaw = shoes.map(function (sh) { return sh.yaw; }), savedT = shared.uTime.value, startT = st.time;
+      exporting = true; intro = null;
+      renderer.setSize(w, h, false);
+      var i = 0;
+      function restore() {
+        exporting = false; renderer.setSize(PW, PH, false);
+        shoes.forEach(function (sh, k) { sh.yaw = savedYaw[k]; }); shared.uTime.value = savedT; $("expGo").disabled = false;
+      }
+      function step() {
+        if (failed) { restore(); status.textContent = "Video export failed: " + failed.message; return; }
+        var end = Math.min(N, i + 6);
+        for (; i < end; i++) {
+          var tt = i / N;
+          shoes.forEach(function (sh, k) { sh.yaw = savedYaw[k] + (turn ? 2 * Math.PI * tt : 0); });
+          shared.uTime.value = st.anim ? startT + i / fps : startT;
+          renderScene();
+          octx.setTransform(w / PW, 0, 0, h / PH, 0, 0);
+          drawPoster(octx);
+          var vf = new VideoFrame(oc, { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
+          enc.encode(vf, { keyFrame: i % 60 === 0 }); vf.close();
+        }
+        status.textContent = "Rendering video " + i + " / " + N + " frames";
+        if (i < N) { setTimeout(step, 0); return; }
+        enc.flush().then(function () {
+          muxer.finalize();
+          var blob = new Blob([muxer.target.buffer], { type: "video/mp4" });
+          restore();
+          if (resUrl) URL.revokeObjectURL(resUrl);
+          resBlob = blob; resUrl = URL.createObjectURL(blob);
+          var v = $("resVid"); v.src = resUrl; v.hidden = false; $("resImg").hidden = true; $("resCopy").hidden = true; v.play().catch(function () {});
+          var a = $("resDl"); a.href = resUrl; a.download = "poster-" + w + "x" + h + ".mp4";
+          $("result").hidden = false;
+          status.textContent = w + " × " + h + " · " + secs + " s · " + (blob.size / 1048576).toFixed(1) + " MB" + (pc.mux === "avc" ? "" : " (" + pc.mux.toUpperCase() + " in an MP4 wrapper)");
+        }).catch(function (e) { restore(); status.textContent = "Video export failed: " + e.message; });
+      }
+      step();
+    });
+  }
+
   $("resCopy").addEventListener("click", function () {
     var status = $("expStatus");
     try {
@@ -1012,9 +1322,146 @@ Calçado</textarea></label>
     } catch (err) { status.textContent = "Copy is blocked here. Right-click the image instead."; }
   });
 
+  /* ---------- Saved settings (localStorage, this browser only) ---------- */
+  var STORE_KEY = "shoePosterStudio.v1", lastSaved = "";
+  var BUILTIN_FONTS = ["Hanken Grotesk", "Archivo", "Outfit", "Manrope"];
+  function snapshot() {
+    return {
+      v: 1,
+      tx: { headline: tx.headline, subline: tx.subline },
+      sty: { fmt: sty.fmt, pos: sty.pos, hs: sty.hs, ss: sty.ss, font: (BUILTIN_FONTS.indexOf(sty.font) >= 0 || (sty.font === "Custom Upload" && (customFonts[800] || customFonts[300]))) ? sty.font : "Hanken Grotesk", ink: sty.ink, bgTop: sty.bgTop, bgBot: sty.bgBot, logos: sty.logos },
+      st: { speed: st.speed, anim: st.anim, layers: st.layers, wave: st.wave, glow: st.glow, spread: shared.uSpread.value },
+      sel: sel, layoutMode: layoutMode,
+      x: { size: $("expSize").selectedIndex, fmt: $("expFmt").value, dur: $("vidDur").value, motion: $("vidMotion").value, view: view },
+      shoes: shoes.map(function (sh) {
+        return { yaw: intro ? sh.rest : sh.yaw, pitch: sh.pitch, zoom: sh.zoom, sx: sh.sx, sy: sh.sy, palette: sh.palette, model: sh.model === "custom" ? "sneaker" : sh.model, nx: sh.nx, ny: sh.ny, zr: sh.zr };
+      })
+    };
+  }
+  var skipSave = false, extrasDirty = false, extrasLoading = false, EXTRA_KEY = "shoePosterStudio.v1.extras";
+  var HDR = "Spin the shoe, pin a frame, edit the layout, export the poster. Changes save automatically in this browser.";
+  function markExtras() { extrasDirty = true; }
+  function ab2b64(buf) {
+    var u = new Uint8Array(buf), out = "", ch = 0x8000;
+    for (var i = 0; i < u.length; i += ch) out += String.fromCharCode.apply(null, u.subarray(i, i + ch));
+    return btoa(out);
+  }
+  function b642ab(b) { var bin = atob(b), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
+  function saveExtras() {
+    var ex = { v: 1, logos: [], fonts: {}, frames: frames.slice(-20) }, total = 0, skipped = false;
+    userLogos.forEach(function (l) {
+      var src = l.img.src;
+      if (src.indexOf("data:") === 0 && total + src.length < 2200000) { total += src.length; ex.logos.push({ src: src, w: l.w, h: l.h }); } else skipped = true;
+    });
+    [800, 300].forEach(function (w) {
+      var f = customFonts[w];
+      if (!f) return;
+      if (total + f.buf.byteLength * 1.4 < 3200000) { ex.fonts[w] = { name: f.name, b64: ab2b64(f.buf) }; total += f.buf.byteLength * 1.4; } else skipped = true;
+    });
+    try { localStorage.setItem(EXTRA_KEY, JSON.stringify(ex)); $("hdrNote").textContent = skipped ? HDR + " Some logos or fonts were too large to keep." : HDR; }
+    catch (e) { try { localStorage.removeItem(EXTRA_KEY); } catch (e2) {} $("hdrNote").textContent = HDR + " Logos, fonts and pinned frames could not be kept (browser storage is full or blocked)."; }
+  }
+  function loadExtras() {
+    var ex = null;
+    try { var raw = localStorage.getItem(EXTRA_KEY); ex = raw ? JSON.parse(raw) : null; } catch (e) { ex = null; }
+    if (!ex || ex.v !== 1) return;
+    extrasLoading = true; var jobs = [];
+    if (Array.isArray(ex.frames)) {
+      frames = ex.frames.filter(function (f) { return f && Array.isArray(f.shoes) && typeof f.thumb === "string" && f.thumb.indexOf("data:image/") === 0; }).slice(-20);
+      renderFrames();
+    }
+    var logoJobs = (Array.isArray(ex.logos) ? ex.logos : []).slice(0, 12).map(function (l, i) {
+      return new Promise(function (res) {
+        if (!l || typeof l.src !== "string" || l.src.indexOf("data:image/") !== 0) { res(null); return; }
+        var im = new Image(); im.onload = function () { res({ img: im, w: im.naturalWidth || l.w || 200, h: im.naturalHeight || l.h || 100 }); }; im.onerror = function () { res(null); }; im.src = l.src;
+      });
+    });
+    jobs.push(Promise.all(logoJobs).then(function (arr) {
+      var ok = arr.filter(Boolean);
+      if (ok.length) { userLogos = ok; $("logoNote").textContent = ok.length + " saved logo" + (ok.length > 1 ? "s" : "") + " restored."; }
+    }));
+    var fonts = ex.fonts || {};
+    [800, 300].forEach(function (w) {
+      var f = fonts[w];
+      if (f && typeof f.b64 === "string") {
+        try { jobs.push(useCustomFontBuffer(w, b642ab(f.b64), String(f.name || "saved font"), true).then(function () { if (wantCustomFont) { $("fontSel").value = "Custom Upload"; sty.font = "Custom Upload"; } }).catch(function () {})); } catch (e) {}
+      }
+    });
+    Promise.all(jobs).then(function () { extrasLoading = false; }, function () { extrasLoading = false; });
+  }
+  var wantCustomFont = false;
+  function saveSettings() {
+    if (exporting || skipSave) return;
+    try {
+      var j = JSON.stringify(snapshot());
+      if (j !== lastSaved) { localStorage.setItem(STORE_KEY, j); lastSaved = j; }
+    } catch (e) {}
+    if (extrasDirty && !extrasLoading) { extrasDirty = false; saveExtras(); }
+  }
+  function num(v, d) { return typeof v === "number" && isFinite(v) ? v : d; }
+  function fire(id, val, type) {
+    var el = $(id); if (!el) return;
+    if (el.type === "checkbox") el.checked = !!val; else el.value = val;
+    el.dispatchEvent(new Event(type || "input"));
+  }
+  function restoreSettings(d) {
+    if (!d || d.v !== 1) return false;
+    var t = d.tx || {}, y = d.sty || {}, s2 = d.st || {};
+    if (typeof t.headline === "string") fire("headline", t.headline);
+    if (typeof t.subline === "string") fire("subline", t.subline);
+    ["ink:tcol", "bgTop:bgTop", "bgBot:bgBot"].forEach(function (p) {
+      var kv = p.split(":"); if (typeof y[kv[0]] === "string" && /^#[0-9a-f]{6}$/i.test(y[kv[0]])) fire(kv[1], y[kv[0]]);
+    });
+    if (typeof y.logos === "boolean") fire("showLogos", y.logos, "change");
+    if (BUILTIN_FONTS.indexOf(y.font) >= 0) fire("fontSel", y.font, "change");
+    else if (y.font === "Custom Upload") wantCustomFont = true;
+    if (typeof y.pos === "string" && POS[y.pos]) { sty.pos = y.pos; $("pos").value = y.pos; }
+    var key = FORMATS[y.fmt] ? y.fmt : "landscape";
+    $("fmt").value = key; setFormat(key, true);
+    fire("hs", num(y.hs, sty.hs)); fire("ss", num(y.ss, sty.ss));
+    var x = d.x || {};
+    if (["png", "jpg", "mp4"].indexOf(x.fmt) >= 0 && Array.prototype.some.call($("expFmt").options, function (o) { return o.value === x.fmt; })) { $("expFmt").value = x.fmt; updateExportUI(); }
+    if (typeof x.size === "number" && x.size >= 0 && x.size < $("expSize").options.length) $("expSize").selectedIndex = x.size;
+    if (typeof x.dur === "string") $("vidDur").value = x.dur;
+    if (x.motion === "turn" || x.motion === "still") $("vidMotion").value = x.motion;
+    if (typeof x.view === "number" && x.view >= 0.1 && x.view <= 3) { view = x.view; applyView(); }
+    fire("sp", num(s2.speed, st.speed)); fire("layers", num(s2.layers, st.layers)); fire("wave", num(s2.wave, st.wave));
+    fire("glow", num(s2.glow, st.glow)); fire("spread", num(s2.spread, shared.uSpread.value));
+    setAnim(s2.anim !== false && !reduce);
+    // shoes
+    var list = Array.isArray(d.shoes) ? d.shoes.slice(0, MAXSHOES) : [];
+    list.forEach(function (p, i) {
+      var o = { yaw: num(p.yaw, -0.2), pitch: num(p.pitch, 0.2), zoom: num(p.zoom, 1), sx: num(p.sx, 0), sy: num(p.sy, 0), palette: Math.max(0, Math.min(PALETTES.length - 1, Math.round(num(p.palette, 0)))), model: p.model === "flow" ? "flow" : "sneaker", nx: num(p.nx, 0), ny: num(p.ny, 0), zr: num(p.zr, 1) };
+      var sh = i === 0 ? shoes[0] : createShoe(o);
+      if (i === 0) { for (var k in o) sh[k] = o[k]; sh.rest = o.yaw; }
+      else sh.rest = o.yaw;
+      applyShoePalette(sh); ensureModel(sh);
+    });
+    layoutMode = d.layoutMode === "trio" ? "trio" : null;
+    sel = Math.max(0, Math.min(shoes.length - 1, Math.round(num(d.sel, 0))));
+    syncShoeUI();
+    return true;
+  }
+  function loadSettings() {
+    try { var raw = localStorage.getItem(STORE_KEY); if (!raw) return false; lastSaved = raw; return restoreSettings(JSON.parse(raw)); }
+    catch (e) { return false; }
+  }
+  $("btnResetAll").addEventListener("click", function () {
+    try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(EXTRA_KEY); } catch (e) {}
+    skipSave = true;
+    try { window.location.reload(); } catch (e) { skipSave = false; }
+  });
+  setInterval(saveSettings, 1000);
+  window.addEventListener("pagehide", saveSettings);
+  document.addEventListener("visibilitychange", function () { if (document.hidden) saveSettings(); });
+
   /* ---------- Start ---------- */
   if (reduce) { setAnim(false); }
-  applyLayers(); applyPalette(); renderFrames(); setFormat("landscape"); applyModel(); playIntro();
+  createShoe({ yaw: -0.2, pitch: 0.2, zoom: 1.35, sx: -0.75, sy: 0.1, palette: 0 });
+  applyPalette(); renderFrames();
+  if (!loadSettings()) setFormat("landscape");
+  loadExtras();
+  playIntro();
   var fontLoads = ["800 56px 'Hanken Grotesk'", "300 56px 'Hanken Grotesk'", "800 56px Archivo", "300 56px Archivo", "800 56px Outfit", "300 56px Outfit", "800 56px Manrope", "300 56px Manrope", "800 13px 'Hanken Grotesk'", "700 9px 'Hanken Grotesk'"];
   try { if (document.fonts && document.fonts.load) fontLoads.forEach(function (f) { document.fonts.load(f); }); } catch (e) {}
   requestAnimationFrame(frame);
