@@ -9,7 +9,7 @@ Single-file poster tool (`index.html`). A layered, glowing 3D shoe (Three.js) ro
 
 ## Analytics
 
-Google Analytics 4 is wired in but switched off until a measurement ID is set. Edit `window.GA_MEASUREMENT_ID` near the top of `index.html` (it looks like `G-XXXXXXXXXX`).
+Google Analytics 4 is wired in with measurement ID `G-9YC56MPK6Q`. To change it, edit `window.GA_MEASUREMENT_ID` near the top of `index.html`. Setting it back to the placeholder `G-XXXXXXXXXX` switches analytics off.
 
 - It loads only on https, never on local files, localhost or inside claude.ai
 - A small banner asks visitors to accept or decline first. Nothing loads before they accept, the choice is remembered in the browser, and an "Analytics choice" button in the controls lets them change it
