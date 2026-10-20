@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Deadstock 2121</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a sticky HUD, a tab strip, one working panel, and a feed that sits beside it on wide screens and below it on phones.
+   Single dark look by choice: sodium-lamp amber on ink blue, cold cyan for data. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0d14;
+  --panel: #121626;
+  --panel-2: #181d31;
+  --line: #2a3150;
+  --fg: #ece7da;
+  --muted: #8d92aa;
+  --amber: #ffb340;
+  --amber-ink: #1a1206;
+  --cyan: #4fd8e8;
+  --rose: #ff4f9a;
+  --good: #6fe3a0;
+  --bad: #ff5c6c;
+  --r-common: #9aa0b4;
+  --r-uncommon: #6fe3a0;
+  --r-rare: #4fd8e8;
+  --r-epic: #c78bff;
+  --r-legendary: #ffb340;
+  --r-mythic: #ff4f9a;
+  --font-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel);
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; line-height: 1.15; text-wrap: balance; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.lbl { font-family: var(--font-display); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+#app { min-height: 100%; display: flex; flex-direction: column; }
+
+.hud {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.brand { font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; display: flex; align-items: baseline; gap: 6px; }
+.brand-name { font-size: 18px; }
+.brand-year { font-size: 12px; color: var(--amber); }
+.stats { display: flex; gap: 18px; flex-wrap: wrap; flex: 1; }
+.stat { display: flex; flex-direction: column; min-width: 56px; }
+.stat .val { font-size: 15px; font-weight: 500; }
+.stat .val.credits { color: var(--amber); }
+
+@media (max-width: 640px) {
+  .hud { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; }
+  .hud .brand { grid-row: 1; grid-column: 1; }
+  .hud #btn-endday { grid-row: 1; grid-column: 2; }
+  .stats { grid-row: 2; grid-column: 1 / -1; gap: 14px; }
+  .stat { min-width: 0; }
+  .stat .val { font-size: 14px; }
+}
+.tabs {
+  display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab-btn {
+  background: none; border: 0; border-bottom: 2px solid transparent; padding: 10px 12px;
+  font-family: var(--font-display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  white-space: nowrap;
+}
+.tab-btn[aria-selected="true"] { color: var(--amber); border-bottom-color: var(--amber); }
+.tab-btn .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: var(--cyan); color: var(--bg); font-size: 11px; text-align: center; }
+
+.body {
+  flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { min-width: 0; padding-block: 18px; padding-right: 18px; }
+.feed { min-width: 0; border-left: 1px solid var(--line); padding: 18px 0 18px 18px; }
+.feed h2 { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.feed ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.feed li { display: grid; grid-template-columns: 34px 1fr; gap: 8px; }
+.feed li .d { color: var(--muted); font-family: var(--font-mono); font-size: 11px; padding-top: 2px; }
+.feed li.good { color: var(--good); }
+.feed li.bad { color: var(--bad); }
+.feed li.find { color: var(--cyan); }
+@media (max-width: 860px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  main { padding-right: 0; }
+  .feed { border-left: 0; border-top: 1px solid var(--line); padding: 18px 0; }
+}
+
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.panel-head h2 { font-size: 20px; }
+.panel-head p { margin: 4px 0 0; color: var(--muted); max-width: 60ch; }
+
+.btn {
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--fg);
+  padding: 8px 14px; border-radius: 4px; font-family: var(--font-display); font-size: 13px; letter-spacing: .04em;
+  transition: border-color .15s, background .15s;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible, .tab-btn:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.btn.amber { background: var(--amber); color: var(--amber-ink); border-color: var(--amber); font-weight: 700; }
+.btn.amber:hover { background: #ffc466; }
+.btn.ghost { background: transparent; }
+.btn.danger { border-color: var(--bad); color: var(--bad); }
+.btn.sm { padding: 5px 10px; font-size: 12px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* district cards */
+.districts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.district { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.district.locked { opacity: .55; }
+.district h3 { font-size: 17px; }
+.district .tag { color: var(--cyan); font-size: 12px; font-family: var(--font-display); letter-spacing: .06em; text-transform: uppercase; }
+.district p { margin: 0; color: var(--muted); font-size: 14px; }
+.district .meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.district .meta b { color: var(--fg); font-weight: 500; }
+.lootbar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 1px; }
+.lootbar span { display: block; height: 100%; }
+.lootkey { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.lootkey i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+/* items */
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.item {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px 10px 14px;
+  position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+}
+.item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 6px 0 0 6px; background: var(--rc); }
+.item .name { font-weight: 600; line-height: 1.3; }
+.item .sub { font-size: 12px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.item .sub .r { color: var(--rc); font-family: var(--font-display); letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
+.item .val { font-family: var(--font-mono); font-size: 14px; color: var(--amber); }
+.item .note { font-size: 12px; color: var(--muted); font-style: italic; }
+.item .acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.item.sel { border-color: var(--cyan); }
+.empty { color: var(--muted); padding: 24px; text-align: center; border: 1px dashed var(--line); border-radius: 6px; }
+
+/* traders */
+.traders { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.trader { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; text-align: left; }
+.trader:hover { border-color: var(--muted); }
+.trader.locked { opacity: .5; cursor: not-allowed; }
+.trader h3 { font-size: 16px; }
+.trader .role { font-size: 12px; color: var(--cyan); }
+.trader .wants { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 11px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); font-family: var(--font-display); letter-spacing: .04em; }
+.chip.hot { border-color: var(--good); color: var(--good); }
+.chip.cold { border-color: var(--bad); color: var(--bad); }
+.trader .cash { font-family: var(--font-mono); font-size: 13px; color: var(--amber); }
+.shop { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .shop { grid-template-columns: 1fr; } }
+.shop h3 { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.quote { background: var(--panel-2); border-left: 3px solid var(--amber); padding: 10px 12px; margin: 0 0 14px; font-style: italic; color: var(--fg); }
+
+/* jobs */
+.jobs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.job { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.job .type { font-family: var(--font-display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--cyan); }
+.job .reward { font-family: var(--font-mono); color: var(--amber); }
+.job .exp { font-size: 12px; color: var(--muted); }
+.job.taken { border-color: var(--cyan); }
+
+/* market */
+.market { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.mk { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; }
+.mk .idx { font-family: var(--font-mono); font-size: 20px; }
+.mk .idx.up { color: var(--good); } .mk .idx.down { color: var(--bad); }
+.mk svg { width: 100%; height: 36px; display: block; margin-top: 6px; }
+.news { margin: 16px 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.news li { background: var(--panel-2); padding: 8px 12px; border-radius: 4px; font-size: 14px; }
+.news li b { color: var(--amber); font-weight: 600; }
+textarea { width: 100%; min-height: 90px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px; font-family: var(--font-mono); font-size: 12px; }
+input[type="text"], input[type="number"] { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; min-width: 0; }
+.section { margin-top: 26px; }
+.section h3 { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+/* modal */
+.modal { position: fixed; inset: 0; z-index: 20; background: rgba(5, 7, 12, .78); display: flex; align-items: center; justify-content: center;
+  padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.modal-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; width: min(560px, 100%); max-height: 100%; overflow: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-card h2 { font-size: 20px; }
+.modal-card p { margin: 0; }
+.bgs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 480px) { .bgs { grid-template-columns: 1fr; } }
+.bg { text-align: left; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.bg.sel { border-color: var(--amber); }
+.bg b { font-family: var(--font-display); }
+.bg span { font-size: 13px; color: var(--muted); }
+.haggle-num { font-family: var(--font-mono); font-size: 26px; color: var(--amber); }
+.rounds { display: flex; gap: 4px; }
+.rounds i { width: 14px; height: 6px; border-radius: 3px; background: var(--line); display: block; }
+.rounds i.on { background: var(--cyan); }
+.pick-list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow: auto; }
+.pick { text-align: left; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; display: flex; justify-content: space-between; gap: 8px; }
+.pick:hover { border-color: var(--muted); }
+.pick .v { font-family: var(--font-mono); color: var(--amber); white-space: nowrap; }
+
+#toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30;
+  background: var(--amber); color: var(--amber-ink); padding: 8px 14px; border-radius: 4px; font-family: var(--font-display); font-size: 13px;
+  opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
+#toast.on { opacity: 1; }
+.intro-art { font-family: var(--font-mono); font-size: 11px; line-height: 1.25; color: var(--cyan); white-space: pre; overflow-x: auto; margin: 0; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="hud">
+    <div class="brand"><span class="brand-name">DEADSTOCK</span><span class="brand-year">2121</span></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">Credits</span><span class="val mono credits" id="hud-credits">0</span></div>
+      <div class="stat"><span class="lbl">Actions</span><span class="val mono" id="hud-ap">0/0</span></div>
+      <div class="stat"><span class="lbl">Day</span><span class="val mono" id="hud-day">1</span></div>
+      <div class="stat"><span class="lbl">Rank</span><span class="val" id="hud-rank">Scrapper</span></div>
+      <div class="stat"><span class="lbl">Rep</span><span class="val mono" id="hud-rep">0</span></div>
+    </div>
+    <button id="btn-endday" class="btn amber" data-act="endday">End day</button>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn" role="tab" data-tab="city" aria-selected="true">City</button>
+    <button class="tab-btn" role="tab" data-tab="traders" aria-selected="false">Night market</button>
+    <button class="tab-btn" role="tab" data-tab="jobs" aria-selected="false">Jobs<span class="badge" id="jobs-badge" hidden>0</span></button>
+    <button class="tab-btn" role="tab" data-tab="vault" aria-selected="false">Vault<span class="badge" id="vault-badge" hidden>0</span></button>
+    <button class="tab-btn" role="tab" data-tab="market" aria-selected="false">Market</button>
+  </nav>
+  <div class="body">
+    <main id="main"></main>
+    <aside class="feed"><h2>Feed</h2><ul id="log"></ul></aside>
+  </div>
+  <div id="modal" class="modal" hidden><div class="modal-card" id="modal-card" role="dialog" aria-modal="true"></div></div>
+  <div id="toast" role="status"></div>
+</div>
+<script>
+'use strict';
+/* ---------- helpers ---------- */
+const SAVE_KEY = 'deadstock2121.v1';
+const $ = s => document.querySelector(s);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rnd(a, b + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const chance = p => Math.random() < p;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const cr = n => Math.round(n).toLocaleString('en-US') + ' cr';
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let uid = 1;
+const nid = () => (Date.now().toString(36) + (uid++).toString(36));
+function weighted(list, wf) {
+  const total = list.reduce((s, x) => s + wf(x), 0);
+  let r = Math.random() * total;
+  for (const x of list) { r -= wf(x); if (r <= 0) return x; }
+  return list[list.length - 1];
+}
+
+/* ---------- data ---------- */
+const RARITY = [
+  { k: 'common', name: 'Common', w: 50, mult: 1 },
+  { k: 'uncommon', name: 'Uncommon', w: 28, mult: 2.2 },
+  { k: 'rare', name: 'Rare', w: 14, mult: 5 },
+  { k: 'epic', name: 'Epic', w: 6, mult: 14 },
+  { k: 'legendary', name: 'Legendary', w: 1.8, mult: 45 },
+  { k: 'mythic', name: 'Mythic', w: 0.2, mult: 160 },
+];
+const COND = [
+  { k: 'mint', name: 'Mint', mult: 1.6, w: 6 },
+  { k: 'nm', name: 'Near Mint', mult: 1.25, w: 16 },
+  { k: 'good', name: 'Good', mult: 1, w: 38 },
+  { k: 'worn', name: 'Worn', mult: 0.7, w: 28 },
+  { k: 'damaged', name: 'Damaged', mult: 0.4, w: 12 },
+];
+const CATS = {
+  records: { name: 'Records', base: 40, color: '#ff4f9a' },
+  toys: { name: 'Toys', base: 35, color: '#ffb340' },
+  games: { name: 'Games', base: 45, color: '#6fe3a0' },
+  mags: { name: 'Magazines', base: 18, color: '#c78bff' },
+  tech: { name: 'Tech', base: 60, color: '#4fd8e8' },
+  art: { name: 'Art', base: 80, color: '#ece7da' },
+};
+const CAT_KEYS = Object.keys(CATS);
+const RANKS = [
+  { name: 'Scrapper', rep: 0 },
+  { name: 'Picker', rep: 50 },
+  { name: 'Dealer', rep: 150 },
+  { name: 'Curator', rep: 400 },
+  { name: 'Archivist', rep: 1000 },
+];
+const AP_SCAVENGE = 2;
+const AP_COURIER = 2;
+
+const DISTRICTS = [
+  { id: 'stacks', name: 'The Stacks', tag: 'Collapsed media archive', desc: 'Forty floors of the old National Media Archive, half of them open to the rain. Paper, shellac and tape.', loot: { records: 3, mags: 4, art: 1, games: 1, toys: 0.5, tech: 0.5 }, rarity: 1.0, toll: 0, risk: 0.1, unlock: 0 },
+  { id: 'submall', name: 'The Submall', tag: 'Flooded shopping centre', desc: 'Three levels of the Colombo Sul mall under two metres of estuary water. Divers bring up what the water did not ruin.', loot: { toys: 4, games: 3, tech: 1, mags: 1, records: 0.5, art: 0.5 }, rarity: 1.1, toll: 40, risk: 0.18, unlock: 0 },
+  { id: 'racks', name: 'Cold Racks', tag: 'Decommissioned data centre', desc: 'Server halls kept at four degrees by a cooling plant nobody switched off. Dev kits, prototypes and cartridges in anti-static bags.', loot: { tech: 4, games: 3, art: 1, mags: 0.5, records: 0.5, toys: 0.5 }, rarity: 1.3, toll: 90, risk: 0.25, unlock: 1 },
+  { id: 'plant', name: 'Pressing Plant', tag: 'Abandoned vinyl factory', desc: 'The last plant on the peninsula. Lacquers still in the drawers, test pressings still in the sleeves.', loot: { records: 6, art: 1, mags: 1, tech: 0.5, toys: 0.2, games: 0.2 }, rarity: 1.45, toll: 150, risk: 0.3, unlock: 2 },
+  { id: 'uptown', name: 'Uptown Vault', tag: 'Private storage towers', desc: 'Climate-controlled lockers that stopped being paid for. Someone still has the keys. Expensive to get in, and the good stuff is here.', loot: { art: 3, records: 2, toys: 2, games: 2, tech: 2, mags: 1 }, rarity: 1.8, toll: 400, risk: 0.35, unlock: 3 },
+];
+
+const NAMES = {
+  records: {
+    artists: ['Velvet Static', 'Os Náufragos', 'Low Orbit Choir', 'Mãe Sintética', 'The Dial Tones', 'Nullpoint Collective', 'Saudade.exe', 'Kessandra Vôo', 'Harbour Lights Orchestra', 'Dry Dock Dub', 'Tágide', 'Chrome Fado'],
+    titles: ['Rust Hymns', 'Coastline Static', 'Thirteen Floors Down', 'Night Market Tapes', 'Analog Ghosts', 'Bairro Alto Blues', 'Signal / Noise', 'Tide Tables', 'Sodium Lamp Sessions', 'Last Pressing', 'Estuary Dub Vol. 2', 'Wet Concrete'],
+    notes: ['180g black vinyl', 'clear vinyl', 'test pressing', 'promo white label', 'picture disc', 'misprint sleeve', 'first pressing', 'reissue', 'cassette single', 'shellac 78', 'signed sleeve', 'withdrawn edition'],
+  },
+  toys: {
+    lines: ['Mecha-Bruxa', 'Astro Rangers', 'Fang & Co.', 'Toy Tyrant', 'Lunar Pals', 'Glitch Puppies', 'Harbour Patrol', 'Tiny Titans'],
+    figs: ['Pilot', 'Sentinel', 'Captain Nova', 'Octo-Mech', 'Chrome Owl', 'Night Diver', 'Salt Witch', 'Dockmaster', 'Pocket Kaiju', 'Rust Knight'],
+    notes: ['first run', 'chase variant', 'unpainted prototype', 'boxed, sealed', 'convention exclusive', 'recolour', 'loose, complete', 'missing accessory', 'store display', 'factory error'],
+  },
+  games: {
+    titles: ['Neon Delta', 'Harbour Run 3', 'Bit Caravan', 'Crossfire Lisboa', 'Saturnine', 'Tidewater Tactics', 'Pocket Necromancer', 'Hyperlane', 'Cargo Cult', 'Static Quest II', 'Driftwood Racer', 'Mall Crawler'],
+    platforms: ['Nexus 64', 'CassetteDeck', 'Holocart', 'PlayCube', 'Wristbox', 'Minidisc Arcade', 'Tágide Home System'],
+    notes: ['PAL', 'NTSC-J', 'demo disc', 'sealed', 'big box', 'loose cartridge', 'review copy', 'dev build', 'rental sticker', 'unreleased port'],
+  },
+  mags: {
+    titles: ['Pixel Weekly', 'Circuit', 'Zona Zero', 'Vinyl Pulse', 'Cassette Futures', 'Static Quarterly', 'Deck & Dial', 'Toybox Monthly'],
+    notes: ['first issue', 'cover variant', 'with poster', 'subscriber edition', 'water-stained', 'complete year bound', 'final issue', 'uncut proof', 'with cover disc'],
+  },
+  tech: {
+    brands: ['Okamura', 'Tágide', 'Vektor', 'Solaris', 'Brickbox', 'Nullpoint', 'Marconi Sul'],
+    devices: ['walkman', 'pager', 'sampler deck', 'camcorder', 'transparent handheld', 'minidisc player', 'acoustic modem', 'instant camera', 'wrist terminal', 'portable CRT'],
+    notes: ['boxed', 'prototype', 'dev unit', 'engraved', 'working', 'for parts', 'limited colourway', 'firmware 0.9', 'with manual'],
+  },
+  art: {
+    forms: ['zine', 'screen print', 'risograph', 'stencil', 'holo-poster', 'sticker sheet', 'linocut', 'flyer set'],
+    artists: ['ANÓNIMA', 'Rui Static', 'DOT.MATRIX', 'Lumen Brothers', 'Sister Sodium', 'The Submall Crew', 'Inês Vapor', 'K-Line'],
+    notes: ['numbered 3/50', 'artist proof', 'signed', 'unsigned', 'torn corner', 'numbered 1/10', 'framed', 'test print'],
+  },
+};
+const GRAILS = [
+  { cat: 'records', name: 'The Ghost Pressing', note: 'A record pressed once at the Plant in 2041 and never released. Nobody agrees on what is on it.' },
+  { cat: 'toys', name: 'Chrome Owl, hand-finished prototype', note: 'The only Chrome Owl painted by the sculptor. The eyes are real glass.' },
+  { cat: 'games', name: 'Crossfire Lisboa, gold master', note: 'The studio burned down the week after this disc was cut.' },
+  { cat: 'mags', name: 'Pixel Weekly #0', note: 'The issue that was never sold. Forty copies went to staff.' },
+  { cat: 'tech', name: 'Okamura wrist terminal, unit 001', note: 'The first one off the line. Engraved to the engineer who designed it.' },
+  { cat: 'art', name: 'ANÓNIMA, "Estuary at High Tide", 1/1', note: 'The stencil used for every wall in the Submall. The only pull on paper.' },
+];
+
+const TRADERS = [
+  { id: 'kess', name: 'Kessandra Vôo', role: 'Sound system, night market', wants: { records: 1.5, art: 1.1, toys: 0.6 }, cash: 1400, patience: 3, greed: 0.12, unlock: 0, bias: 'records',
+    lines: { greet: 'Kess does not look up from the mixer. "Show me what you dug up."', buy: 'Kess holds the sleeve to the light.', no: 'Kess slides it back. "Not today."', deal: '"Deal. Now get off my stage."' } },
+  { id: 'dinis', name: 'Old Dinis', role: 'Toy stall, dry level of the Submall', wants: { toys: 1.45, mags: 1.15, tech: 0.6 }, cash: 900, patience: 4, greed: 0.08, unlock: 0, bias: 'toys',
+    lines: { greet: 'Dinis is gluing an arm back on a figure. "Sit. What have you got?"', buy: 'Dinis turns it over twice.', no: 'Dinis shakes his head slowly. "My grandchildren would not even want that."', deal: '"Fine, fine. You rob an old man."' } },
+  { id: 'null', name: 'Nullpoint', role: 'Vending kiosk with a wallet', wants: { tech: 1.5, games: 1.35, mags: 0.7, art: 0.7 }, cash: 1600, patience: 2, greed: 0.18, unlock: 0, bias: 'tech',
+    lines: { greet: 'The kiosk lights up. "ITEM SCAN READY. PLACE OBJECT IN TRAY."', buy: '"SCANNING. CONDITION LOGGED."', no: '"OFFER REJECTED. TRANSACTION CLOSED."', deal: '"ACCEPTED. CREDITS TRANSFERRED. HAVE A PRODUCTIVE DAY."' } },
+  { id: 'mags', name: 'Mags Ferraz', role: 'Zine archive, the Stacks', wants: { mags: 1.55, art: 1.4, tech: 0.6, games: 0.7 }, cash: 800, patience: 4, greed: 0.05, unlock: 0, bias: 'mags',
+    lines: { greet: 'Mags is cataloguing with gloves on. "If it is paper, I am interested."', buy: 'Mags checks the spine, the staples, the smell.', no: '"I have three of these already. Better ones."', deal: '"Lovely. It goes in the north drawer."' } },
+  { id: 'rafa', name: 'Tio Rafa', role: 'Pawn shop, the docks', wants: { records: 0.55, toys: 0.55, games: 0.55, mags: 0.55, tech: 0.55, art: 0.55 }, cash: 5000, patience: 1, greed: 0.3, unlock: 0, bias: null,
+    lines: { greet: 'Rafa does not get up. "I buy anything. I pay badly. You know this."', buy: 'Rafa barely looks.', no: '"Take it or leave it, miúdo."', deal: '"Next."' } },
+  { id: 'ozu', name: 'Baron Ozu', role: 'Uptown fixer', wants: { records: 1.4, toys: 1.4, games: 1.4, mags: 1.3, tech: 1.4, art: 1.6 }, cash: 12000, patience: 2, greed: 0.1, unlock: 2, minRarity: 3, bias: 'art',
+    lines: { greet: 'Ozu\'s assistant opens the case. The Baron speaks from somewhere behind the glass. "I only see things that matter."', buy: 'A long silence from behind the glass.', no: '"You are wasting the Baron\'s time."', deal: '"The Baron is pleased. For now."' } },
+];
+const BACKGROUNDS = [
+  { id: 'courier', name: 'Ex-courier', desc: '7 action points a day instead of 6. You know the shortcuts.' },
+  { id: 'digger', name: 'Crate digger', desc: 'A trained eye. Rarer finds from day one.' },
+  { id: 'hustler', name: 'Hustler', desc: 'Traders open 10% higher when you sell.' },
+  { id: 'heir', name: 'Tower dropout', desc: 'Start with 1,200 credits instead of 400. Everyone in the market knows your family.' },
+];
+const NEWS = [
+  { text: 'A tower influencer was photographed with a {item}. {cat} prices jump.', mult: 1.3 },
+  { text: 'Customs seized a container of counterfeit {catl}. Buyers want the real thing.', mult: 1.2 },
+  { text: 'A collector in the towers died. Their {catl} collection floods the market.', mult: 0.75 },
+  { text: 'Nostalgia documentary about {catl} tops the feeds this week.', mult: 1.25 },
+  { text: 'Rumour of a hidden cache of {catl} under the Submall. Everyone is suddenly an expert.', mult: 0.88 },
+  { text: 'The Register is auditing {catl} provenance. Serious buyers pay a premium for clean items.', mult: 1.15 },
+];
+const MISHAPS = [
+  { text: 'A police drone sweeps the floor. You hide for an hour and lose an action point.', ap: 1 },
+  { text: 'The toll collector decides you look rich today. {fine} extra, no receipt.', fine: 0.1 },
+  { text: 'A floor gives way. You climb out with nothing but bruises.', nothing: true },
+  { text: 'Another picker got here first. Fresh footprints, empty shelves.', nothing: true },
+];
+
+/* ---------- state ---------- */
+let state = null;
+let ui = { tab: 'city', trader: null, haggle: null, sel: null };
+
+function newState(name, bg) {
+  const s = {
+    v: 1, name, bg, day: 1, credits: bg === 'heir' ? 1200 : 400, apMax: bg === 'courier' ? 7 : 6, ap: 0, rep: 0, eye: bg === 'digger' ? 14 : 0,
+    cap: 20, inv: [], traders: {}, jobs: [], market: {}, hist: {}, news: [], log: [], grails: [], registered: false, finds: 0, deals: 0,
+  };
+  s.ap = s.apMax;
+  for (const c of CAT_KEYS) { s.market[c] = 1; s.hist[c] = [1]; }
+  for (const t of TRADERS) s.traders[t.id] = { cash: t.cash, rep: 0, inv: [], patience: t.patience, mood: 0 };
+  restockTraders(s, true);
+  while (s.jobs.length < 3) s.jobs.push(genJob(s));
+  s.news.push({ day: 1, text: 'Welcome to Estuary. The tide is out. Everything below the water line is yours if you can carry it.' });
+  return s;
+}
+function rankIndex(s = state) { let i = 0; RANKS.forEach((r, n) => { if (s.rep >= r.rep) i = n; }); return i; }
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* storage unavailable */ } }
+function load() { try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const s = JSON.parse(raw); if (s && s.v === 1) return s; } } catch (e) { /* ignore */ } return null; }
+function log(text, kind = '') { state.log.unshift({ day: state.day, text, kind }); if (state.log.length > 80) state.log.length = 80; }
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 2200); }
+function commit() { save(); render(); }
+
+/* ---------- items ---------- */
+function itemValue(item, s = state) {
+  const r = RARITY[item.r], c = COND[item.c];
+  let v = CATS[item.cat].base * r.mult * c.mult * (s.market[item.cat] || 1);
+  if (item.grail) v *= 1.5;
+  return Math.max(3, Math.round(v));
+}
+function rollRarity(boost, eye) {
+  const picked = weighted(RARITY, r => r.w * Math.pow(boost * (1 + eye * 0.012), RARITY.indexOf(r)));
+  return RARITY.indexOf(picked);
+}
+function genItem(opts = {}) {
+  const cat = opts.cat || pick(CAT_KEYS);
+  let r = opts.r != null ? opts.r : rollRarity(opts.boost || 1, opts.eye || 0);
+  if (opts.minR != null && r < opts.minR) r = opts.minR;
+  const c = opts.c != null ? opts.c : COND.indexOf(weighted(COND, x => x.w));
+  const item = { id: nid(), cat, r, c, found: state ? state.day : 1 };
+  if (r === 5) {
+    const taken = (state && state.grails) || [];
+    const free = GRAILS.filter(g => g.cat === cat && !taken.includes(g.name));
+    const g = free[0] || GRAILS.find(g => !taken.includes(g.name));
+    if (g) { item.name = g.name; item.note = g.note; item.grail = true; item.cat = g.cat; item.year = ri(2030, 2045); return item; }
+    r = item.r = 4;
+  }
+  const N = NAMES[cat];
+  const year = ri(1975, 2042);
+  item.year = year;
+  if (cat === 'records') item.name = `${pick(N.artists)} – ${pick(N.titles)}`;
+  else if (cat === 'toys') item.name = `${pick(N.lines)} ${pick(N.figs)}`;
+  else if (cat === 'games') item.name = `${pick(N.titles)} (${pick(N.platforms)})`;
+  else if (cat === 'mags') item.name = `${pick(N.titles)} #${ri(1, 240)}`;
+  else if (cat === 'tech') item.name = `${pick(N.brands)} ${pick(N.devices)}`;
+  else item.name = `${pick(N.artists)}, ${pick(N.forms)}`;
+  const notes = N.notes;
+  item.note = r >= 3 ? `${notes[ri(0, notes.length - 1)]}, ${notes[ri(0, notes.length - 1)]}` : notes[ri(0, notes.length - 1)];
+  return item;
+}
+function itemCard(item, acts = '', extra = '') {
+  const r = RARITY[item.r], c = COND[item.c];
+  return `<div class="item ${ui.sel === item.id ? 'sel' : ''}" style="--rc: var(--r-${r.k})" data-item="${item.id}">
+    <div class="name">${esc(item.name)}</div>
+    <div class="sub"><span class="r">${r.name}</span><span>${CATS[item.cat].name}</span><span>${c.name}</span><span>${item.year}</span></div>
+    ${item.note ? `<div class="note">${esc(item.note)}</div>` : ''}
+    <div class="val">${extra || '≈ ' + cr(itemValue(item))}</div>
+    ${acts ? `<div class="acts">${acts}</div>` : ''}
+  </div>`;
+}
+
+/* ---------- traders ---------- */
+function traderDef(id) { return TRADERS.find(t => t.id === id); }
+function traderOpen(t, s = state) { return rankIndex(s) >= t.unlock; }
+function restockTraders(s, full = false) {
+  for (const t of TRADERS) {
+    const st = s.traders[t.id];
+    st.cash = Math.min(t.cash * 1.5, st.cash + t.cash * (full ? 1 : 0.6));
+    st.patience = t.patience;
+    st.inv = st.inv.filter(() => chance(0.6));
+    const target = t.id === 'rafa' ? 6 : t.id === 'ozu' ? 3 : 4;
+    const boost = t.id === 'ozu' ? 2.2 : t.id === 'rafa' ? 0.8 : 1.2;
+    while (st.inv.length < target) {
+      const cat = t.bias && chance(0.6) ? t.bias : pick(CAT_KEYS);
+      const it = genItem({ cat, boost, eye: 0, minR: t.minRarity || 0 });
+      if (it.r === 5) continue;
+      st.inv.push(it);
+    }
+  }
+}
+function wantMult(t, cat) { return t.wants[cat] || 1; }
+function repBonus(st) { return Math.min(st.rep, 25) * 0.01; }
+// what the trader thinks the item is worth to them when buying from the player
+function traderBid(t, st, item) {
+  return itemValue(item) * wantMult(t, item.cat) * (1 + repBonus(st)) * (1 + (t.id !== 'rafa' && state.bg === 'hustler' ? 0.1 : 0));
+}
+// trader's floor when selling to the player
+function traderFloor(t, st, item) {
+  return itemValue(item) * (1 + Math.max(0, wantMult(t, item.cat) - 1) * 0.4) * (1 + t.greed * 0.5) * (1 - repBonus(st) * 0.6);
+}
+function traderAsk(t, st, item) { return traderFloor(t, st, item) * (1.25 + t.greed); }
+
+/* ---------- jobs ---------- */
+function genJob(s) {
+  const type = pick(['fetch', 'fetch', 'bulk', 'courier', 'appraise']);
+  const giver = pick(TRADERS.filter(t => traderOpen(t, s)));
+  const cat = pick(CAT_KEYS);
+  const job = { id: nid(), type, giver: giver.id, taken: false, expires: s.day + ri(3, 6) };
+  const rank = rankIndex(s);
+  if (type === 'fetch') {
+    job.cat = cat; job.minR = clamp(ri(1, 2 + rank), 1, 4);
+    const base = CATS[cat].base * RARITY[job.minR].mult;
+    job.reward = Math.round(base * 1.45 + 60 + rank * 40); job.rep = 8 + job.minR * 4;
+    job.text = `Bring me a ${RARITY[job.minR].name.toLowerCase()} or better ${CATS[cat].name.toLowerCase()} item. Any condition. I pay on delivery.`;
+  } else if (type === 'bulk') {
+    job.cat = cat; job.n = ri(2, 3 + Math.min(rank, 2));
+    job.reward = Math.round(CATS[cat].base * job.n * 2.1 + 40 + rank * 30); job.rep = 6 + job.n * 2;
+    job.text = `I need ${job.n} ${CATS[cat].name.toLowerCase()} items for a lot sale. Rarity and condition do not matter.`;
+  } else if (type === 'courier') {
+    const d = pick(DISTRICTS.filter(x => x.unlock <= rank));
+    job.dist = d.id; job.reward = Math.round(120 + rank * 90 + d.toll * 0.8); job.rep = 6 + rank * 2; job.risk = 0.15 + d.risk * 0.5;
+    job.text = `Carry a sealed crate to ${d.name}. Do not open it. Do not get stopped. ${AP_COURIER} action points.`;
+  } else {
+    const it = genItem({ cat, boost: 1.3, eye: 20 }); if (it.r === 5) it.r = 4;
+    job.item = it; job.reward = Math.round(80 + rank * 50 + itemValue(it, s) * 0.12); job.rep = 10;
+    job.text = `A client wants a blind appraisal. Tell me what this is worth today, within 20%, and I pay you for the opinion.`;
+  }
+  return job;
+}
+
+/* ---------- actions ---------- */
+function scavenge(did) {
+  const d = DISTRICTS.find(x => x.id === did);
+  if (!d || rankIndex() < d.unlock) return toast('Locked. Raise your rank.');
+  if (state.ap < AP_SCAVENGE) return toast('Not enough action points. End the day.');
+  if (state.credits < d.toll) return toast(`You need ${cr(d.toll)} for the toll.`);
+  if (state.inv.length >= state.cap) return toast('Your vault is full. Sell something first.');
+  state.ap -= AP_SCAVENGE; state.credits -= d.toll;
+  if (d.toll) log(`Paid ${cr(d.toll)} to get into ${d.name}.`);
+  if (chance(d.risk * 0.55)) {
+    const m = pick(MISHAPS);
+    if (m.ap) state.ap = Math.max(0, state.ap - m.ap);
+    let fine = 0;
+    if (m.fine) { fine = Math.min(200, Math.round(state.credits * m.fine)); state.credits -= fine; }
+    log(m.text.replace('{fine}', cr(fine)), 'bad');
+    return commit();
+  }
+  if (chance(0.17)) { log(`${d.name}: you turn over every box and come back with nothing.`); return commit(); }
+  const count = chance(0.12) ? 2 : 1;
+  const found = [];
+  for (let i = 0; i < count && state.inv.length < state.cap; i++) {
+    const cat = weighted(CAT_KEYS, k => d.loot[k] || 0.1);
+    const it = genItem({ cat, boost: d.rarity, eye: state.eye });
+    if (it.grail) state.grails.push(it.name);
+    state.inv.push(it); found.push(it); state.eye++; state.finds++;
+    if (it.r >= 2) state.rep += it.r - 1;
+    log(`Found in ${d.name}: ${it.name} (${RARITY[it.r].name}, ${COND[it.c].name}).`, it.r >= 3 ? 'good' : 'find');
+    if (it.grail) log(`This is a grail. ${it.note}`, 'good');
+  }
+  save();
+  if (found.length && chance(0.1)) {
+    const it = found[0]; const offer = Math.round(itemValue(it) * rnd(0.85, 1.25));
+    openModal(`<h2>Someone saw you find that</h2>
+      <p>A picker in a wet coat nods at the ${esc(it.name)}. "I will give you ${cr(offer)} for it right here. No questions."</p>
+      ${itemCard(it)}
+      <div class="row"><button class="btn amber" data-act="spot-sell" data-id="${it.id}" data-offer="${offer}">Take ${cr(offer)}</button><button class="btn" data-act="close">Keep it</button></div>`);
+  }
+  render();
+}
+function spotSell(id, offer) {
+  const i = state.inv.findIndex(x => x.id === id); if (i < 0) return closeModal();
+  const it = state.inv.splice(i, 1)[0]; state.credits += offer;
+  log(`Sold ${it.name} on the spot for ${cr(offer)}.`, 'good');
+  closeModal(); commit();
+}
+function endDay() {
+  state.day++; state.ap = state.apMax;
+  for (const c of CAT_KEYS) {
+    state.market[c] = clamp(state.market[c] * (1 + rnd(-0.07, 0.07)) * 0.96 + 0.04, 0.5, 2.6);
+  }
+  if (chance(0.45)) {
+    const n = pick(NEWS); const cat = pick(CAT_KEYS);
+    state.market[cat] = clamp(state.market[cat] * n.mult, 0.5, 2.6);
+    const sample = genItem({ cat, r: 3 });
+    const text = n.text.replace('{item}', sample.name).replace('{cat}', CATS[cat].name).replace('{catl}', CATS[cat].name.toLowerCase());
+    state.news.unshift({ day: state.day, text, cat });
+    log(`News: ${text}`, n.mult > 1 ? 'good' : 'bad');
+  }
+  for (const c of CAT_KEYS) { state.hist[c].push(+state.market[c].toFixed(3)); if (state.hist[c].length > 14) state.hist[c].shift(); }
+  if (state.news.length > 8) state.news.length = 8;
+  restockTraders(state);
+  const expired = state.jobs.filter(j => j.expires < state.day);
+  for (const j of expired) log(`Job from ${traderDef(j.giver).name} expired.`, 'bad');
+  state.jobs = state.jobs.filter(j => j.expires >= state.day);
+  while (state.jobs.length < 3) state.jobs.push(genJob(state));
+  log(`Day ${state.day}. The market opens.`);
+  checkRegister();
+  commit();
+}
+function checkRegister() {
+  if (state.registered) return;
+  if (rankIndex() >= 4 && state.inv.some(i => i.grail)) {
+    state.registered = true;
+    log('Your name is on the Register. Estuary knows what you have.', 'good');
+    openModal(`<h2>You made the Register</h2>
+      <p>An Archivist with a grail in the vault. The city writes your name on the list of collections that matter. Traders will keep trading, tides will keep coming in, but from today you are the one people sell to.</p>
+      <p class="muted">The game continues. There is always a rarer version.</p>
+      <div class="row"><button class="btn amber" data-act="close">Back to work</button></div>`);
+  }
+}
+
+/* trades */
+function startHaggle(mode, traderId, itemId) {
+  const t = traderDef(traderId), st = state.traders[traderId];
+  const item = mode === 'sell' ? state.inv.find(i => i.id === itemId) : st.inv.find(i => i.id === itemId);
+  if (!item) return;
+  if (mode === 'sell' && t.minRarity && item.r < t.minRarity) return toast(`${t.name} only looks at ${RARITY[t.minRarity].name.toLowerCase()} and above.`);
+  const h = { mode, traderId, itemId, round: 0, max: st.patience, done: false, msg: t.lines.buy };
+  if (mode === 'sell') {
+    h.bid = traderBid(t, st, item);
+    h.offer = Math.round(Math.min(st.cash, h.bid * rnd(0.7, 0.8)));
+    if (st.cash < h.bid * 0.5) h.msg = `${t.name} counts the cash box. "I am light today."`;
+  } else {
+    h.floor = traderFloor(t, st, item);
+    h.offer = Math.round(traderAsk(t, st, item));
+  }
+  ui.haggle = h; renderHaggle();
+}
+function haggleCounter(price) {
+  const h = ui.haggle; if (!h || h.done) return;
+  const t = traderDef(h.traderId), st = state.traders[h.traderId];
+  price = Math.round(price);
+  if (!(price > 0)) return toast('Enter a price.');
+  h.round++;
+  if (h.mode === 'sell') {
+    if (price > st.cash) { h.msg = `"I do not carry that much." (${cr(st.cash)} in the box.)`; h.round--; return renderHaggle(); }
+    if (price <= h.bid * 0.98 || (price <= h.bid * (1.08 + repBonus(st) * 0.4) && chance(0.5))) { h.offer = price; return closeDeal(); }
+    if (h.round >= h.max) { h.done = true; h.msg = t.lines.no; st.mood--; return renderHaggle(); }
+    h.offer = Math.round(Math.min(h.bid * (1 - t.greed * 0.4), h.offer + (price - h.offer) * 0.4));
+    h.msg = pick([`"${cr(h.offer)}. That is me being generous."`, `"Come on. ${cr(h.offer)}."`, `"${cr(h.offer)} and I forget you asked for more."`]);
+  } else {
+    if (price > state.credits) { h.msg = `You do not have ${cr(price)}.`; h.round--; return renderHaggle(); }
+    if (price >= h.floor || (price >= h.floor * 0.93 && chance(0.4))) { h.offer = price; return closeDeal(); }
+    if (h.round >= h.max) { h.done = true; h.msg = t.lines.no; st.mood--; return renderHaggle(); }
+    h.offer = Math.round(Math.max(h.floor, h.offer - (h.offer - price) * 0.4));
+    h.msg = pick([`"${cr(h.offer)}. I have bills."`, `"Lowest I go is ${cr(h.offer)}."`, `"${cr(h.offer)}. Do not insult me twice."`]);
+  }
+  renderHaggle();
+}
+function closeDeal() {
+  const h = ui.haggle; const t = traderDef(h.traderId), st = state.traders[h.traderId];
+  if (h.mode === 'sell') {
+    const i = state.inv.findIndex(x => x.id === h.itemId); if (i < 0) return closeModal();
+    const item = state.inv.splice(i, 1)[0];
+    state.credits += h.offer; st.cash -= h.offer; st.inv.push(item);
+    const fair = h.offer <= h.bid * 1.05;
+    if (fair) { st.rep += 2; state.rep += 1; }
+    state.deals++;
+    log(`Sold ${item.name} to ${t.name} for ${cr(h.offer)}.`, 'good');
+  } else {
+    const i = st.inv.findIndex(x => x.id === h.itemId); if (i < 0) return closeModal();
+    if (state.inv.length >= state.cap) { toast('Your vault is full.'); return; }
+    const item = st.inv.splice(i, 1)[0];
+    state.credits -= h.offer; st.cash += h.offer; item.found = state.day; state.inv.push(item);
+    if (item.grail) state.grails.push(item.name);
+    const fair = h.offer >= h.floor * 1.05;
+    if (fair) { st.rep += 2; state.rep += 1; }
+    state.deals++;
+    log(`Bought ${item.name} from ${t.name} for ${cr(h.offer)}.`, 'good');
+  }
+  st.patience = Math.max(1, st.patience);
+  h.done = true; h.msg = t.lines.deal; h.closed = true;
+  save(); renderHaggle(); render();
+  checkRegister();
+}
+function startSwap(traderId, itemId) {
+  const t = traderDef(traderId), st = state.traders[traderId];
+  const want = st.inv.find(i => i.id === itemId); if (!want) return;
+  const floor = traderFloor(t, st, want);
+  const mine = state.inv.filter(i => !(t.minRarity && i.r < t.minRarity));
+  if (!mine.length) return toast('Nothing in your vault they would take.');
+  openModal(`<h2>Swap for ${esc(want.name)}</h2>
+    <p class="muted">${t.name} values it around ${cr(floor)}. Pick what you offer. If yours is worth less to them, they ask for a credit top-up.</p>
+    <div class="pick-list">${mine.map(i => {
+      const bid = traderBid(t, st, i); const top = Math.max(0, Math.round(floor - bid));
+      return `<button class="pick" data-act="do-swap" data-tid="${traderId}" data-want="${itemId}" data-give="${i.id}"><span>${esc(i.name)} <span class="muted">(${RARITY[i.r].name})</span></span><span class="v">${top > 0 ? '+ ' + cr(top) : 'even'}</span></button>`;
+    }).join('')}</div>
+    <div class="row"><button class="btn" data-act="close">Cancel</button></div>`);
+}
+function doSwap(traderId, wantId, giveId) {
+  const t = traderDef(traderId), st = state.traders[traderId];
+  const wi = st.inv.findIndex(i => i.id === wantId), gi = state.inv.findIndex(i => i.id === giveId);
+  if (wi < 0 || gi < 0) return closeModal();
+  const want = st.inv[wi], give = state.inv[gi];
+  const top = Math.max(0, Math.round(traderFloor(t, st, want) - traderBid(t, st, give)));
+  if (top > state.credits) return toast(`You need ${cr(top)} to top up.`);
+  st.inv.splice(wi, 1); state.inv.splice(gi, 1);
+  st.inv.push(give); want.found = state.day; state.inv.push(want);
+  state.credits -= top; st.cash += top; st.rep += 1; state.deals++;
+  if (want.grail) state.grails.push(want.name);
+  log(`Swapped ${give.name} for ${want.name} with ${t.name}${top ? ' plus ' + cr(top) : ''}.`, 'good');
+  closeModal(); commit(); checkRegister();
+}
+
+/* jobs */
+function takeJob(id) { const j = state.jobs.find(x => x.id === id); if (j) { j.taken = true; log(`Took a job from ${traderDef(j.giver).name}.`); commit(); } }
+function dropJob(id) { state.jobs = state.jobs.filter(x => x.id !== id); commit(); }
+function finishJob(j, note) {
+  state.credits += j.reward; state.rep += j.rep; state.traders[j.giver].rep += 2;
+  state.jobs = state.jobs.filter(x => x.id !== j.id);
+  log(`${note} ${traderDef(j.giver).name} pays ${cr(j.reward)}.`, 'good');
+  closeModal(); commit();
+}
+function deliverFetch(id) {
+  const j = state.jobs.find(x => x.id === id); if (!j) return;
+  const ok = state.inv.filter(i => i.cat === j.cat && i.r >= j.minR);
+  if (!ok.length) return toast(`You need a ${RARITY[j.minR].name.toLowerCase()}+ ${CATS[j.cat].name.toLowerCase()} item.`);
+  openModal(`<h2>Hand over</h2><p class="muted">Pick the item to deliver. It leaves your vault.</p>
+    <div class="pick-list">${ok.map(i => `<button class="pick" data-act="do-fetch" data-job="${id}" data-id="${i.id}"><span>${esc(i.name)} <span class="muted">(${RARITY[i.r].name}, ${COND[i.c].name})</span></span><span class="v">${cr(itemValue(i))}</span></button>`).join('')}</div>
+    <div class="row"><button class="btn" data-act="close">Cancel</button></div>`);
+}
+function doFetch(jobId, itemId) {
+  const j = state.jobs.find(x => x.id === jobId); const i = state.inv.findIndex(x => x.id === itemId);
+  if (!j || i < 0) return closeModal();
+  const it = state.inv.splice(i, 1)[0];
+  finishJob(j, `Delivered ${it.name}.`);
+}
+function deliverBulk(id) {
+  const j = state.jobs.find(x => x.id === id); if (!j) return;
+  const ok = state.inv.filter(i => i.cat === j.cat).sort((a, b) => itemValue(a) - itemValue(b));
+  if (ok.length < j.n) return toast(`You need ${j.n} ${CATS[j.cat].name.toLowerCase()} items. You have ${ok.length}.`);
+  const lot = ok.slice(0, j.n);
+  openModal(`<h2>Deliver the lot</h2><p class="muted">Your ${j.n} cheapest ${CATS[j.cat].name.toLowerCase()} items go. Together they are worth about ${cr(lot.reduce((s, i) => s + itemValue(i), 0))} on the market. The job pays ${cr(j.reward)}.</p>
+    <div class="pick-list">${lot.map(i => `<div class="pick"><span>${esc(i.name)}</span><span class="v">${cr(itemValue(i))}</span></div>`).join('')}</div>
+    <div class="row"><button class="btn amber" data-act="do-bulk" data-job="${id}">Deliver</button><button class="btn" data-act="close">Cancel</button></div>`);
+}
+function doBulk(jobId) {
+  const j = state.jobs.find(x => x.id === jobId); if (!j) return closeModal();
+  const ok = state.inv.filter(i => i.cat === j.cat).sort((a, b) => itemValue(a) - itemValue(b)).slice(0, j.n);
+  state.inv = state.inv.filter(i => !ok.includes(i));
+  finishJob(j, `Delivered ${j.n} ${CATS[j.cat].name.toLowerCase()} items.`);
+}
+function runCourier(id) {
+  const j = state.jobs.find(x => x.id === id); if (!j) return;
+  if (state.ap < AP_COURIER) return toast('Not enough action points.');
+  state.ap -= AP_COURIER;
+  const d = DISTRICTS.find(x => x.id === j.dist);
+  if (chance(j.risk)) {
+    const cut = Math.round(j.reward * 0.5); j.reward -= cut;
+    log(`Stopped at a checkpoint on the way to ${d.name}. The crate gets through, but half the fee goes to the guard.`, 'bad');
+    finishJob(j, `Crate delivered to ${d.name}, late and lighter.`);
+  } else {
+    finishJob(j, `Crate delivered to ${d.name}, no questions asked.`);
+  }
+}
+function openAppraise(id) {
+  const j = state.jobs.find(x => x.id === id); if (!j) return;
+  openModal(`<h2>Blind appraisal</h2><p class="muted">Rarity and condition are visible. The market index for ${CATS[j.item.cat].name.toLowerCase()} today is ${state.market[j.item.cat].toFixed(2)}. You get one guess.</p>
+    ${itemCard(j.item, '', '?')}
+    <div class="row"><input type="number" id="appraise-input" min="1" placeholder="Your valuation in credits" style="flex:1"><button class="btn amber" data-act="do-appraise" data-job="${id}">Submit</button></div>
+    <div class="row"><button class="btn" data-act="close">Cancel</button></div>`);
+}
+function doAppraise(jobId) {
+  const j = state.jobs.find(x => x.id === jobId); if (!j) return closeModal();
+  const g = parseFloat($('#appraise-input').value); if (!(g > 0)) return toast('Enter a valuation.');
+  const v = itemValue(j.item);
+  if (Math.abs(g - v) / v <= 0.2) { finishJob(j, `Appraised ${j.item.name} at ${cr(g)} (true value ${cr(v)}).`); }
+  else {
+    state.jobs = state.jobs.filter(x => x.id !== j.id);
+    log(`Appraised ${j.item.name} at ${cr(g)}. It was worth ${cr(v)}. The client walks.`, 'bad');
+    closeModal(); commit();
+  }
+}
+function buyStorage() {
+  const cost = 500 + (state.cap - 20) * 50;
+  if (state.credits < cost) return toast(`A bigger locker costs ${cr(cost)}.`);
+  state.credits -= cost; state.cap += 10; log(`Rented more locker space. ${state.cap} slots now.`); commit();
+}
+
+/* ---------- rendering ---------- */
+function openModal(html) { $('#modal-card').innerHTML = html; $('#modal').hidden = false; }
+function closeModal() { $('#modal').hidden = true; ui.haggle = null; }
+function lootBar(d) {
+  const total = CAT_KEYS.reduce((s, k) => s + (d.loot[k] || 0), 0);
+  return `<div class="lootbar">${CAT_KEYS.map(k => `<span style="width:${(d.loot[k] || 0) / total * 100}%;background:${CATS[k].color}" title="${CATS[k].name}"></span>`).join('')}</div>`;
+}
+function renderCity() {
+  const rank = rankIndex();
+  return `<div class="panel-head"><div><h2>Estuary</h2><p>Pick a district and dig. Scavenging costs ${AP_SCAVENGE} action points plus the toll. Your Eye is ${state.eye}: every find sharpens it.</p></div></div>
+  <div class="lootkey">${CAT_KEYS.map(k => `<span><i style="background:${CATS[k].color}"></i>${CATS[k].name}</span>`).join('')}</div>
+  <div class="districts" style="margin-top:12px">${DISTRICTS.map(d => {
+    const locked = rank < d.unlock;
+    return `<div class="district ${locked ? 'locked' : ''}">
+      <div class="tag">${esc(d.tag)}</div><h3>${esc(d.name)}</h3><p>${esc(d.desc)}</p>
+      ${lootBar(d)}
+      <div class="meta"><span>Toll <b>${d.toll ? cr(d.toll) : 'free'}</b></span><span>Risk <b>${Math.round(d.risk * 100)}%</b></span><span>Rarity <b>×${d.rarity}</b></span></div>
+      ${locked ? `<div class="muted" style="font-size:13px">Opens at ${RANKS[d.unlock].name} (${RANKS[d.unlock].rep} rep)</div>` : `<div class="row"><button class="btn amber" data-act="scavenge" data-id="${d.id}" ${state.ap < AP_SCAVENGE ? 'disabled' : ''}>Scavenge (${AP_SCAVENGE} AP)</button></div>`}
+    </div>`;
+  }).join('')}</div>`;
+}
+function renderTraders() {
+  const rank = rankIndex();
+  if (!ui.trader) {
+    return `<div class="panel-head"><div><h2>Night market</h2><p>Six traders, six wallets. Each one pays over the odds for what they want and badly for what they do not. Trading costs no action points.</p></div></div>
+    <div class="traders">${TRADERS.map(t => {
+      const st = state.traders[t.id]; const locked = rank < t.unlock;
+      return `<button class="trader ${locked ? 'locked' : ''}" data-act="open-trader" data-id="${t.id}" ${locked ? 'disabled' : ''}>
+        <h3>${esc(t.name)}</h3><div class="role">${esc(t.role)}</div>
+        <div class="wants">${CAT_KEYS.filter(k => t.wants[k] && t.wants[k] !== 1).map(k => `<span class="chip ${t.wants[k] > 1 ? 'hot' : 'cold'}">${CATS[k].name} ×${t.wants[k]}</span>`).join('')}${t.minRarity ? `<span class="chip hot">${RARITY[t.minRarity].name}+ only</span>` : ''}</div>
+        <div class="cash">${locked ? `Opens at ${RANKS[t.unlock].name}` : cr(st.cash) + ' in the box'}</div>
+        <div class="muted" style="font-size:12px">Rep with you: ${st.rep}</div>
+      </button>`;
+    }).join('')}</div>`;
+  }
+  const t = traderDef(ui.trader), st = state.traders[t.id];
+  const sellable = state.inv.filter(i => !(t.minRarity && i.r < t.minRarity));
+  return `<div class="panel-head"><div><h2>${esc(t.name)}</h2><p>${esc(t.role)}. ${cr(st.cash)} in the box. Patience ${st.patience} round${st.patience === 1 ? '' : 's'}. Rep ${st.rep}.</p></div><button class="btn ghost" data-act="back-traders">← All traders</button></div>
+  <blockquote class="quote">${esc(t.lines.greet)}</blockquote>
+  <div class="wants" style="margin-bottom:16px">${CAT_KEYS.map(k => `<span class="chip ${wantMult(t, k) > 1 ? 'hot' : wantMult(t, k) < 1 ? 'cold' : ''}">${CATS[k].name} ×${wantMult(t, k)}</span>`).join('')}</div>
+  <div class="shop">
+    <div><h3>They are selling</h3>${st.inv.length ? `<div class="items">${st.inv.map(i => itemCard(i, `<button class="btn sm amber" data-act="buy" data-tid="${t.id}" data-id="${i.id}">Haggle to buy</button><button class="btn sm" data-act="swap" data-tid="${t.id}" data-id="${i.id}">Swap</button>`, 'asking ≈ ' + cr(traderAsk(t, st, i)))).join('')}</div>` : '<div class="empty">Sold out. Come back tomorrow.</div>'}</div>
+    <div><h3>Your vault</h3>${sellable.length ? `<div class="items">${sellable.map(i => itemCard(i, `<button class="btn sm amber" data-act="sell" data-tid="${t.id}" data-id="${i.id}">Haggle to sell</button>`, `market ≈ ${cr(itemValue(i))} · to them ×${wantMult(t, i.cat)}`)).join('')}</div>` : `<div class="empty">${t.minRarity ? `Nothing ${RARITY[t.minRarity].name.toLowerCase()} or better to show.` : 'Your vault is empty. Go dig.'}</div>`}</div>
+  </div>`;
+}
+function renderHaggle() {
+  const h = ui.haggle; if (!h) return;
+  const t = traderDef(h.traderId), st = state.traders[h.traderId];
+  const item = h.mode === 'sell' ? (state.inv.find(i => i.id === h.itemId) || st.inv.find(i => i.id === h.itemId)) : (st.inv.find(i => i.id === h.itemId) || state.inv.find(i => i.id === h.itemId));
+  const rounds = Array.from({ length: h.max }, (_, i) => `<i class="${i < h.round ? 'on' : ''}"></i>`).join('');
+  let body;
+  if (h.closed) {
+    body = `<div class="haggle-num">${cr(h.offer)}</div><p>${esc(h.msg)}</p><div class="row"><button class="btn amber" data-act="close">Done</button></div>`;
+  } else if (h.done) {
+    body = `<p>${esc(h.msg)}</p><p class="muted">They are done haggling on this item today.</p><div class="row"><button class="btn" data-act="close">Walk away</button></div>`;
+  } else {
+    body = `<div class="lbl">${h.mode === 'sell' ? 'Their offer' : 'Their asking price'}</div><div class="haggle-num">${cr(h.offer)}</div>
+      <p>${esc(h.msg)}</p>
+      <div class="row"><input type="number" id="haggle-input" min="1" placeholder="${h.mode === 'sell' ? 'Ask for more' : 'Offer less'}" style="flex:1" value="${Math.round(h.mode === 'sell' ? h.offer * 1.2 : h.offer * 0.85)}"><button class="btn" data-act="counter">Counter</button></div>
+      <div class="row"><button class="btn amber" data-act="accept">${h.mode === 'sell' ? 'Accept ' + cr(h.offer) : 'Pay ' + cr(h.offer)}</button><button class="btn ghost" data-act="close">Walk away</button></div>`;
+  }
+  openModal(`<h2>${h.mode === 'sell' ? 'Selling to' : 'Buying from'} ${esc(t.name)}</h2>
+    ${item ? itemCard(item) : ''}
+    <div class="row" style="justify-content:space-between"><span class="lbl">Rounds</span><div class="rounds">${rounds}</div></div>
+    ${body}`);
+  const inp = $('#haggle-input'); if (inp) inp.focus();
+}
+function renderJobs() {
+  return `<div class="panel-head"><div><h2>Job board</h2><p>Assignments from the traders. Taking one costs nothing. Jobs expire; the reward is paid on delivery.</p></div></div>
+  <div class="jobs">${state.jobs.map(j => {
+    const g = traderDef(j.giver);
+    let act = '';
+    if (!j.taken) act = `<button class="btn sm" data-act="take-job" data-id="${j.id}">Take job</button>`;
+    else if (j.type === 'fetch') act = `<button class="btn sm amber" data-act="deliver-fetch" data-id="${j.id}">Deliver item</button>`;
+    else if (j.type === 'bulk') act = `<button class="btn sm amber" data-act="deliver-bulk" data-id="${j.id}">Deliver lot</button>`;
+    else if (j.type === 'courier') act = `<button class="btn sm amber" data-act="run-courier" data-id="${j.id}" ${state.ap < AP_COURIER ? 'disabled' : ''}>Run it (${AP_COURIER} AP)</button>`;
+    else act = `<button class="btn sm amber" data-act="appraise" data-id="${j.id}">Appraise</button>`;
+    const labels = { fetch: 'Fetch', bulk: 'Bulk lot', courier: 'Courier', appraise: 'Appraisal' };
+    return `<div class="job ${j.taken ? 'taken' : ''}">
+      <div class="type">${labels[j.type]} · ${esc(g.name)}</div>
+      <div>${esc(j.text)}</div>
+      <div class="reward">${cr(j.reward)} + ${j.rep} rep</div>
+      <div class="exp">${j.expires - state.day <= 0 ? 'Expires tonight' : `${j.expires - state.day} day${j.expires - state.day === 1 ? '' : 's'} left`}${j.taken ? ' · taken' : ''}</div>
+      <div class="row">${act}${j.taken ? `<button class="btn sm ghost" data-act="drop-job" data-id="${j.id}">Drop</button>` : ''}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function renderVault() {
+  const total = state.inv.reduce((s, i) => s + itemValue(i), 0);
+  const cost = 500 + (state.cap - 20) * 50;
+  const sorted = [...state.inv].sort((a, b) => itemValue(b) - itemValue(a));
+  return `<div class="panel-head"><div><h2>Vault</h2><p>${state.inv.length} of ${state.cap} slots. Everything here is worth about ${cr(total)} at today's prices. Sell at the night market.</p></div>
+    <button class="btn" data-act="storage">Bigger locker (+10) · ${cr(cost)}</button></div>
+  ${sorted.length ? `<div class="items">${sorted.map(i => itemCard(i)).join('')}</div>` : '<div class="empty">Empty. The Stacks are free to enter.</div>'}
+  <div class="section"><h3>The Register</h3><p class="muted" style="margin:0 0 8px">Six grails exist in Estuary. Hold one as an Archivist and your name goes on the Register.</p>
+  <div class="items">${GRAILS.map(g => `<div class="item" style="--rc: var(--r-mythic); ${state.grails.includes(g.name) ? '' : 'opacity:.55'}"><div class="name">${esc(g.name)}</div><div class="sub"><span class="r">Mythic</span><span>${CATS[g.cat].name}</span></div><div class="note">${esc(g.note)}</div><div class="val">${state.grails.includes(g.name) ? 'Seen' : 'Unseen'}</div></div>`).join('')}</div></div>`;
+}
+function spark(h) {
+  const w = 100, hh = 36; const min = Math.min(...h) * 0.95, max = Math.max(...h) * 1.05 || 1;
+  const pts = h.map((v, i) => `${(i / Math.max(1, h.length - 1) * w).toFixed(1)},${(hh - (v - min) / (max - min) * hh).toFixed(1)}`).join(' ');
+  const last = pts.split(' ').pop();
+  return `<svg viewBox="0 0 ${w} ${hh}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="var(--cyan)" stroke-width="1.5" vector-effect="non-scaling-stroke"/><circle cx="${last.split(',')[0]}" cy="${last.split(',')[1]}" r="2" fill="var(--amber)"/></svg>`;
+}
+function renderMarket() {
+  return `<div class="panel-head"><div><h2>Market</h2><p>Each category has an index. 1.00 is the long-run average. Item values move with it, so buy low and sell on the spike.</p></div></div>
+  <div class="market">${CAT_KEYS.map(k => {
+    const h = state.hist[k]; const prev = h.length > 1 ? h[h.length - 2] : h[0]; const cur = state.market[k];
+    const dir = cur > prev + 0.005 ? 'up' : cur < prev - 0.005 ? 'down' : '';
+    return `<div class="mk"><div class="lbl" style="color:${CATS[k].color}">${CATS[k].name}</div><div class="idx ${dir}">${cur.toFixed(2)} ${dir === 'up' ? '▲' : dir === 'down' ? '▼' : ''}</div><div class="muted" style="font-size:12px">base ${CATS[k].base} cr</div>${spark([...h.slice(0, -1), cur])}</div>`;
+  }).join('')}</div>
+  <div class="section"><h3>News</h3><ul class="news">${state.news.map(n => `<li><b>Day ${n.day}</b> ${esc(n.text)}</li>`).join('')}</ul></div>
+  <div class="section"><h3>Picker</h3><p class="muted" style="margin:0 0 8px">${esc(state.name)}, ${BACKGROUNDS.find(b => b.id === state.bg).name.toLowerCase()}. ${state.finds} finds, ${state.deals} deals, Eye ${state.eye}. Next rank: ${rankIndex() < RANKS.length - 1 ? `${RANKS[rankIndex() + 1].name} at ${RANKS[rankIndex() + 1].rep} rep` : 'none, you are an Archivist'}.</p></div>
+  <div class="section"><h3>Save</h3><p class="muted" style="margin:0 0 8px">The game saves itself in this browser after every action. Copy the text below to move it somewhere else.</p>
+    <textarea id="save-out" readonly>${esc(JSON.stringify(state))}</textarea>
+    <div class="row" style="margin-top:8px"><button class="btn sm" data-act="copy-save">Copy save</button></div>
+    <p class="muted" style="margin:14px 0 8px">Paste a save here to load it.</p>
+    <textarea id="save-in" placeholder="Paste a save"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn sm" data-act="import-save">Load save</button><button class="btn sm danger" data-act="new-game-ask">New game</button></div>
+  </div>`;
+}
+function render() {
+  if (!state) return;
+  $('#hud-credits').textContent = cr(state.credits);
+  $('#hud-ap').textContent = `${state.ap}/${state.apMax}`;
+  $('#hud-day').textContent = state.day;
+  $('#hud-rank').textContent = RANKS[rankIndex()].name;
+  $('#hud-rep').textContent = state.rep;
+  const jb = $('#jobs-badge'); const taken = state.jobs.filter(j => j.taken).length; jb.hidden = !taken; jb.textContent = taken;
+  const vb = $('#vault-badge'); vb.hidden = !state.inv.length; vb.textContent = state.inv.length;
+  document.querySelectorAll('.tab-btn').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === ui.tab ? 'true' : 'false'));
+  const m = $('#main');
+  m.innerHTML = { city: renderCity, traders: renderTraders, jobs: renderJobs, vault: renderVault, market: renderMarket }[ui.tab]();
+  $('#log').innerHTML = state.log.slice(0, 40).map(l => `<li class="${l.kind}"><span class="d">d${l.day}</span><span>${esc(l.text)}</span></li>`).join('');
+}
+function renderIntro() {
+  ui.bg = ui.bg || 'courier';
+  openModal(`<pre class="intro-art">ESTUARY · 2121 · TIDE OUT
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ the towers kept the money.
+ the water kept everything else.</pre>
+    <h2>New picker</h2>
+    <p class="muted">You find things nobody has made in eighty years and sell them to people who cannot live without them. Pick a name and a past.</p>
+    <label class="lbl" for="name-input">Handle</label>
+    <input type="text" id="name-input" maxlength="24" placeholder="e.g. Salt" value="${esc(ui.name || '')}">
+    <div class="bgs">${BACKGROUNDS.map(b => `<button class="bg ${ui.bg === b.id ? 'sel' : ''}" data-act="pick-bg" data-id="${b.id}"><b>${b.name}</b><span>${b.desc}</span></button>`).join('')}</div>
+    <div class="row"><button class="btn amber" data-act="start">Start digging</button></div>`);
+  $('#name-input').focus();
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const tab = e.target.closest('[data-tab]');
+  if (tab) { ui.tab = tab.dataset.tab; ui.trader = null; render(); return; }
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  switch (a) {
+    case 'scavenge': scavenge(id); break;
+    case 'endday': endDay(); break;
+    case 'close': closeModal(); break;
+    case 'spot-sell': spotSell(id, +el.dataset.offer); break;
+    case 'open-trader': ui.trader = id; render(); break;
+    case 'back-traders': ui.trader = null; render(); break;
+    case 'sell': startHaggle('sell', el.dataset.tid, id); break;
+    case 'buy': startHaggle('buy', el.dataset.tid, id); break;
+    case 'swap': startSwap(el.dataset.tid, id); break;
+    case 'do-swap': doSwap(el.dataset.tid, el.dataset.want, el.dataset.give); break;
+    case 'counter': haggleCounter(parseFloat($('#haggle-input').value)); break;
+    case 'accept': if (ui.haggle && !ui.haggle.done) { if (ui.haggle.mode === 'buy' && state.credits < ui.haggle.offer) return toast('Not enough credits.'); closeDeal(); } break;
+    case 'take-job': takeJob(id); break;
+    case 'drop-job': dropJob(id); break;
+    case 'deliver-fetch': deliverFetch(id); break;
+    case 'do-fetch': doFetch(el.dataset.job, id); break;
+    case 'deliver-bulk': deliverBulk(id); break;
+    case 'do-bulk': doBulk(el.dataset.job); break;
+    case 'run-courier': runCourier(id); break;
+    case 'appraise': openAppraise(id); break;
+    case 'do-appraise': doAppraise(el.dataset.job); break;
+    case 'storage': buyStorage(); break;
+    case 'pick-bg': ui.bg = id; ui.name = $('#name-input').value; renderIntro(); break;
+    case 'start': {
+      const name = ($('#name-input').value || '').trim() || 'Salt';
+      state = newState(name, ui.bg || 'courier'); log(`${name} walks into Estuary with ${cr(state.credits)}.`);
+      closeModal(); commit(); break;
+    }
+    case 'copy-save': {
+      const ta = $('#save-out');
+      navigator.clipboard?.writeText(ta.value).then(() => toast('Save copied')).catch(() => { ta.select(); toast('Select and copy the text'); });
+      break;
+    }
+    case 'import-save': {
+      try { const s = JSON.parse($('#save-in').value); if (!s || s.v !== 1 || !Array.isArray(s.inv)) throw 0; state = s; ui.trader = null; log('Save loaded.'); commit(); toast('Loaded'); }
+      catch (err) { toast('That is not a valid save.'); }
+      break;
+    }
+    case 'new-game-ask': openModal(`<h2>Start over?</h2><p>This wipes ${esc(state.name)}'s vault, credits and reputation. Copy the save first if you want it back.</p><div class="row"><button class="btn danger" data-act="new-game">Wipe and start over</button><button class="btn" data-act="close">Keep playing</button></div>`); break;
+    case 'new-game': try { localStorage.removeItem(SAVE_KEY); } catch (err) { /* ignore */ } state = null; ui = { tab: 'city', trader: null, haggle: null }; closeModal(); renderIntro(); break;
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'haggle-input') { e.preventDefault(); haggleCounter(parseFloat(e.target.value)); }
+  if (e.key === 'Enter' && e.target.id === 'appraise-input') { e.preventDefault(); const b = document.querySelector('[data-act="do-appraise"]'); if (b) b.click(); }
+  if (e.key === 'Enter' && e.target.id === 'name-input') { e.preventDefault(); document.querySelector('[data-act="start"]').click(); }
+  if (e.key === 'Escape' && !$('#modal').hidden && state) closeModal();
+});
+
+/* ---------- boot ---------- */
+function start(hot) {
+  state = (hot && hot.state) || load();
+  if (hot && hot.ui) ui = Object.assign(ui, hot.ui, { haggle: null });
+  if (state) render(); else renderIntro();
+  window.claude?.hot?.snapshot?.(() => ({ state, ui }));
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? null);
+</script>
+</body>
+</html>

@@ -1,4 +1,12 @@
-# HelloHelder: Shoe Poster Studio
+# HelloHelder
+
+Two single-file browser projects, no build step.
+
+## Deadstock 2121 (`deadstock/`)
+
+A game about finding and trading rarities in a drowned cyberpunk port city. Scavenge districts, haggle with bot traders, take assignments, and trade your way up to the Register. Open `deadstock/index.html` in a browser. The vision, world and roadmap are in `deadstock/DESIGN.md`.
+
+## Shoe Poster Studio (`index.html`)
 
 Single-file poster tool (`index.html`). A layered, glowing 3D shoe (Three.js) rotates 360 degrees, sits inside an editable poster layout, and exports to PNG/JPG at screen or print resolution (A4/A3 at 300 dpi, with DPI metadata).
 
