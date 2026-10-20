@@ -288,8 +288,8 @@ const RARITY = [
   { k: 'uncommon', name: 'Uncommon', w: 28, mult: 2.2 },
   { k: 'rare', name: 'Rare', w: 14, mult: 5 },
   { k: 'epic', name: 'Epic', w: 6, mult: 14 },
-  { k: 'legendary', name: 'Legendary', w: 1.8, mult: 45 },
-  { k: 'mythic', name: 'Mythic', w: 0.2, mult: 160 },
+  { k: 'legendary', name: 'Legendary', w: 1.2, mult: 45 },
+  { k: 'mythic', name: 'Mythic', w: 0.05, mult: 160 },
 ];
 const COND = [
   { k: 'mint', name: 'Mint', mult: 1.6, w: 6 },
@@ -432,7 +432,7 @@ function itemValue(item, s = state) {
   return Math.max(3, Math.round(v));
 }
 function rollRarity(boost, eye) {
-  const picked = weighted(RARITY, r => r.w * Math.pow(boost * (1 + eye * 0.012), RARITY.indexOf(r)));
+  const picked = weighted(RARITY, r => r.w * Math.pow(boost * (1 + Math.min(eye, 30) * 0.012), RARITY.indexOf(r)));
   return RARITY.indexOf(picked);
 }
 function genItem(opts = {}) {

@@ -49,8 +49,10 @@ Six rarity tiers with steep value multipliers. Mythic items are named grails wit
 | Uncommon | 28 | 2.2x |
 | Rare | 14 | 5x |
 | Epic | 6 | 14x |
-| Legendary | 1.8 | 45x |
-| Mythic | 0.2 | 160x |
+| Legendary | 1.2 | 45x |
+| Mythic | 0.05 | 160x |
+
+District rarity boosts and the Eye skill (capped at 30) multiply the weights upward tier by tier, so the top tiers only become realistic in the later districts.
 
 Condition multiplies on top: Mint 1.6x, Near Mint 1.25x, Good 1x, Worn 0.7x, Damaged 0.4x.
 
