@@ -69,6 +69,8 @@ Traders are bots with personalities. Each one wants some categories and pays mor
 - **Tio Rafa** runs the dock pawn shop. Buys anything at a bad price. Always has cash. Your floor when you are desperate.
 - **Baron Ozu** is an uptown fixer. Only deals in epic and above. Pays a fortune. Opens once you are a Dealer.
 
+Each trader has a written bio on their page and a pixel portrait. Portraits are drawn at runtime on a 12 by 14 pixel grid from a small feature spec (skin, hair style and colour, eyes, accessory, clothing, halo colour), so there is no image pipeline: a new character is a line of data. Players pick their own face from generated options at character creation, and each background has a short origin story.
+
 Later, player characters take these seats and the bots become the long tail of the market.
 
 ## The loop

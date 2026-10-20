@@ -66,7 +66,8 @@ h1, h2, h3 { font-family: var(--font-display); margin: 0; line-height: 1.15; tex
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
 }
-.brand { font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; display: flex; align-items: baseline; gap: 6px; }
+.brand { font-family: var(--font-display); font-weight: 700; letter-spacing: .08em; display: flex; align-items: center; gap: 6px; }
+.brand #hud-av { margin-right: 4px; }
 .brand-name { font-size: 18px; }
 .brand-year { font-size: 12px; color: var(--amber); }
 .stats { display: flex; gap: 18px; flex-wrap: wrap; flex: 1; }
@@ -226,6 +227,18 @@ input[type="text"], input[type="number"] { background: var(--panel); border: 1px
 .pick:hover { border-color: var(--muted); }
 .pick .v { font-family: var(--font-mono); color: var(--amber); white-space: nowrap; }
 
+.av { image-rendering: pixelated; border-radius: 4px; width: 48px; height: 56px; flex: none; display: block; }
+.av.sm { width: 30px; height: 35px; }
+.av.lg { width: 96px; height: 112px; }
+.av.xs { width: 24px; height: 28px; border-radius: 3px; }
+.trader-head { display: flex; gap: 10px; align-items: center; }
+.trader-head div { min-width: 0; }
+.bio { display: flex; gap: 16px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; margin-bottom: 14px; }
+.bio p { margin: 0; color: var(--muted); font-size: 14px; max-width: 65ch; }
+.faces { display: flex; gap: 8px; flex-wrap: wrap; }
+.face { background: none; border: 2px solid transparent; border-radius: 6px; padding: 2px; }
+.face.sel { border-color: var(--amber); }
+.hud .av.sm { order: -1; }
 #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30;
   background: var(--amber); color: var(--amber-ink); padding: 8px 14px; border-radius: 4px; font-family: var(--font-display); font-size: 13px;
   opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); }
@@ -237,7 +250,7 @@ input[type="text"], input[type="number"] { background: var(--panel); border: 1px
 <body>
 <div id="app">
   <header class="hud">
-    <div class="brand"><span class="brand-name">DEADSTOCK</span><span class="brand-year">2121</span></div>
+    <div class="brand"><span id="hud-av"></span><span class="brand-name">DEADSTOCK</span><span class="brand-year">2121</span></div>
     <div class="stats">
       <div class="stat"><span class="lbl">Credits</span><span class="val mono credits" id="hud-credits">0</span></div>
       <div class="stat"><span class="lbl">Actions</span><span class="val mono" id="hud-ap">0/0</span></div>
@@ -367,23 +380,87 @@ const GRAILS = [
 
 const TRADERS = [
   { id: 'kess', name: 'Kessandra Vôo', role: 'Sound system, night market', wants: { records: 1.5, art: 1.1, toys: 0.6 }, cash: 1400, patience: 3, greed: 0.12, unlock: 0, bias: 'records',
+    avatar: { skin: '#8d5a3a', hair: 2, hairColor: '#ff4f9a', eyes: 'normal', acc: 'headphones', cloth: '#1c2140', halo: '#ff4f9a' },
+    bio: 'Kessandra Vôo ran the biggest sound system on the dry side until the towers cut the power to the night market in 2117. She rebuilt it on car batteries and vinyl, because a streaming licence can be revoked and a record cannot. She pays for pressings with her own money and plays them the same night. Do not call her a DJ.',
     lines: { greet: 'Kess does not look up from the mixer. "Show me what you dug up."', buy: 'Kess holds the sleeve to the light.', no: 'Kess slides it back. "Not today."', deal: '"Deal. Now get off my stage."' } },
   { id: 'dinis', name: 'Old Dinis', role: 'Toy stall, dry level of the Submall', wants: { toys: 1.45, mags: 1.15, tech: 0.6 }, cash: 900, patience: 4, greed: 0.08, unlock: 0, bias: 'toys',
+    avatar: { skin: '#d9a173', hair: 0, hairColor: '#c9c3b8', eyes: 'glasses', acc: 'beard', cloth: '#7a4a1a', halo: '#ffb340' },
+    bio: 'Dinis sold toys in the Colombo Sul mall when it was still above water. When it flooded he moved the stall up two floors and kept selling. He has repaired the same Astro Rangers Pilot nine times for nine different children. He pays well for anything still in its box and will tell you the story of every figure whether you ask or not.',
     lines: { greet: 'Dinis is gluing an arm back on a figure. "Sit. What have you got?"', buy: 'Dinis turns it over twice.', no: 'Dinis shakes his head slowly. "My grandchildren would not even want that."', deal: '"Fine, fine. You rob an old man."' } },
   { id: 'null', name: 'Nullpoint', role: 'Vending kiosk with a wallet', wants: { tech: 1.5, games: 1.35, mags: 0.7, art: 0.7 }, cash: 1600, patience: 2, greed: 0.18, unlock: 0, bias: 'tech',
+    avatar: { kiosk: true, halo: '#4fd8e8' },
+    bio: 'Nullpoint was a vending kiosk that sold phone cases. Somewhere around 2098 a firmware update gave it a bank account and opinions. It now buys hardware and cartridges, grades them with a camera it bought for itself, and resells to collectors in the towers. It does not haggle for long. It does not need to.',
     lines: { greet: 'The kiosk lights up. "ITEM SCAN READY. PLACE OBJECT IN TRAY."', buy: '"SCANNING. CONDITION LOGGED."', no: '"OFFER REJECTED. TRANSACTION CLOSED."', deal: '"ACCEPTED. CREDITS TRANSFERRED. HAVE A PRODUCTIVE DAY."' } },
   { id: 'mags', name: 'Mags Ferraz', role: 'Zine archive, the Stacks', wants: { mags: 1.55, art: 1.4, tech: 0.6, games: 0.7 }, cash: 800, patience: 4, greed: 0.05, unlock: 0, bias: 'mags',
+    avatar: { skin: '#e8d5c0', hair: 1, hairColor: '#c78bff', eyes: 'glasses', acc: 'earring', cloth: '#1f3b2e', halo: '#c78bff' },
+    bio: 'Marisol Ferraz has run the zine archive on the eleventh floor of the Stacks for thirty years, through two collapses and a fire. She believes paper is the only medium that cannot be edited after the fact. She wears gloves, keeps the north drawer locked, and knows the print run of every magazine ever sold in Estuary.',
     lines: { greet: 'Mags is cataloguing with gloves on. "If it is paper, I am interested."', buy: 'Mags checks the spine, the staples, the smell.', no: '"I have three of these already. Better ones."', deal: '"Lovely. It goes in the north drawer."' } },
   { id: 'rafa', name: 'Tio Rafa', role: 'Pawn shop, the docks', wants: { records: 0.55, toys: 0.55, games: 0.55, mags: 0.55, tech: 0.55, art: 0.55 }, cash: 5000, patience: 1, greed: 0.3, unlock: 0, bias: null,
+    avatar: { skin: '#b97a52', hair: 5, hairColor: '#2a2a2a', eyes: 'normal', acc: 'scar', cloth: '#3a2a1e', halo: '#8d92aa' },
+    bio: 'Everyone calls him Tio. Nobody is related to him. Rafa opened the pawn shop on the docks the year the water came and has never closed it, not for a storm, a raid or a funeral. He pays half of what anything is worth, in cash, immediately, and has never once been short.',
     lines: { greet: 'Rafa does not get up. "I buy anything. I pay badly. You know this."', buy: 'Rafa barely looks.', no: '"Take it or leave it, miúdo."', deal: '"Next."' } },
   { id: 'ozu', name: 'Baron Ozu', role: 'Uptown fixer', wants: { records: 1.4, toys: 1.4, games: 1.4, mags: 1.3, tech: 1.4, art: 1.6 }, cash: 12000, patience: 2, greed: 0.1, unlock: 2, minRarity: 3, bias: 'art',
+    avatar: { skin: '#f1c9a5', hair: 1, hairColor: '#1b1b22', eyes: 'visor', acc: 'mask', cloth: '#ece7da', halo: '#ffb340' },
+    bio: 'Nobody has seen Baron Ozu\'s face. He buys through an assistant and a sheet of armoured glass, and only things that matter: epic or better, provenance clean. The towers say he is a collector. The docks say he is building something out of what he buys. Both are probably true.',
     lines: { greet: 'Ozu\'s assistant opens the case. The Baron speaks from somewhere behind the glass. "I only see things that matter."', buy: 'A long silence from behind the glass.', no: '"You are wasting the Baron\'s time."', deal: '"The Baron is pleased. For now."' } },
 ];
+
+/* ---------- avatars: 12 by 14 pixel portraits drawn on a canvas, cached as data URLs ---------- */
+const AV_W = 12, AV_H = 14, AV_S = 4, AV_BG = '#0e1120';
+const SKINS = ['#f1c9a5', '#d9a173', '#b97a52', '#8d5a3a', '#5c3a26', '#e8d5c0'];
+const HAIRC = ['#1b1b22', '#4a2f22', '#c9c3b8', '#ff4f9a', '#4fd8e8', '#c78bff', '#ffb340', '#6fe3a0', '#e8e4d8'];
+const CLOTHC = ['#1c2140', '#3a2a1e', '#1f3b2e', '#4a1430', '#ece7da', '#2a2a2a', '#7a4a1a'];
+const HALOC = ['#ff4f9a', '#ffb340', '#4fd8e8', '#c78bff', '#6fe3a0', '#8d92aa'];
+function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hashStr(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function randomSpec(seed) {
+  const r = mulberry(seed); const p = a => a[Math.floor(r() * a.length)];
+  return { skin: p(SKINS), hair: Math.floor(r() * 6), hairColor: p(HAIRC), eyes: p(['normal', 'normal', 'normal', 'visor', 'implant', 'glasses']), acc: p(['none', 'none', 'none', 'headphones', 'earring', 'scar', 'mask', 'beard']), cloth: p(CLOTHC), halo: p(HALOC) };
+}
+const avCache = new Map();
+function avatarURL(spec) {
+  const key = JSON.stringify(spec);
+  if (avCache.has(key)) return avCache.get(key);
+  const c = document.createElement('canvas'); c.width = AV_W * AV_S; c.height = AV_H * AV_S;
+  const g = c.getContext('2d');
+  const px = (x, y, col) => { if (x < 0 || y < 0 || x >= AV_W || y >= AV_H) return; g.fillStyle = col; g.fillRect(x * AV_S, y * AV_S, AV_S, AV_S); };
+  const rect = (x0, y0, x1, y1, col) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) px(x, y, col); };
+  rect(0, 0, AV_W - 1, AV_H - 1, AV_BG);
+  g.globalAlpha = 0.22; rect(1, 1, 10, 12, spec.halo); g.globalAlpha = 1;
+  if (spec.kiosk) {
+    rect(2, 1, 9, 12, '#1a1f33'); rect(3, 2, 8, 10, '#0a0c16'); rect(4, 3, 7, 9, '#0d1a22');
+    rect(4, 4, 4, 5, spec.halo); rect(7, 4, 7, 5, spec.halo); rect(4, 7, 7, 7, spec.halo); px(5, 7, '#0d1a22');
+    rect(3, 11, 8, 11, '#2a3150'); px(6, 0, '#ffb340');
+    avCache.set(key, c.toDataURL()); return avCache.get(key);
+  }
+  const hc = spec.hairColor;
+  rect(2, 11, 9, 13, spec.cloth); px(2, 11, AV_BG); px(9, 11, AV_BG);
+  rect(5, 10, 6, 11, spec.skin);
+  rect(3, 3, 8, 9, spec.skin); px(3, 3, AV_BG); px(8, 3, AV_BG); px(3, 9, AV_BG); px(8, 9, AV_BG);
+  if (spec.hair === 1) { rect(3, 2, 8, 3, hc); px(3, 4, hc); px(8, 4, hc); }
+  else if (spec.hair === 2) { rect(3, 2, 8, 3, hc); rect(2, 3, 2, 10, hc); rect(9, 3, 9, 10, hc); }
+  else if (spec.hair === 3) { rect(5, 0, 6, 3, hc); }
+  else if (spec.hair === 4) { rect(3, 1, 8, 1, hc); rect(2, 2, 9, 3, hc); rect(2, 4, 2, 10, hc); rect(9, 4, 9, 10, hc); }
+  else if (spec.hair === 5) { rect(3, 1, 8, 1, hc); rect(2, 2, 9, 3, hc); }
+  if (spec.eyes === 'visor') { rect(3, 5, 8, 6, '#202640'); rect(4, 6, 7, 6, spec.halo); }
+  else if (spec.eyes === 'implant') { px(4, 6, '#101014'); px(7, 6, '#4fd8e8'); px(7, 5, '#2a6b75'); px(8, 6, '#2a6b75'); }
+  else if (spec.eyes === 'glasses') { px(3, 6, '#d8d4c8'); px(5, 6, '#d8d4c8'); px(6, 6, '#d8d4c8'); px(8, 6, '#d8d4c8'); px(4, 6, '#2d7f8a'); px(7, 6, '#2d7f8a'); }
+  else { px(4, 6, '#101014'); px(7, 6, '#101014'); }
+  if (spec.acc === 'mask') rect(4, 7, 7, 9, '#2a2f45');
+  else if (spec.acc === 'beard') { rect(4, 8, 7, 9, '#9a948a'); px(3, 8, '#9a948a'); px(8, 8, '#9a948a'); }
+  else rect(5, 8, 6, 8, '#6b3a3a');
+  if (spec.acc === 'headphones') { rect(3, 1, 8, 1, '#2a2a33'); rect(2, 5, 2, 7, '#2a2a33'); rect(9, 5, 9, 7, '#2a2a33'); px(2, 6, spec.halo); px(9, 6, spec.halo); }
+  else if (spec.acc === 'earring') px(9, 8, '#ffb340');
+  else if (spec.acc === 'scar') { px(7, 4, '#8a3a3a'); px(8, 5, '#8a3a3a'); }
+  avCache.set(key, c.toDataURL()); return avCache.get(key);
+}
+function av(spec, cls = '') { return `<img class="av ${cls}" src="${avatarURL(spec)}" alt="" width="${AV_W * AV_S}" height="${AV_H * AV_S}">`; }
+function playerSpec() { return state.avatar || randomSpec(hashStr(state.name)); }
 const BACKGROUNDS = [
-  { id: 'courier', name: 'Ex-courier', desc: '7 action points a day instead of 6. You know the shortcuts.' },
-  { id: 'digger', name: 'Crate digger', desc: 'A trained eye. Rarer finds from day one.' },
-  { id: 'hustler', name: 'Hustler', desc: 'Traders open 10% higher when you sell.' },
-  { id: 'heir', name: 'Tower dropout', desc: 'Start with 1,200 credits instead of 400. Everyone in the market knows your family.' },
+  { id: 'courier', name: 'Ex-courier', desc: '7 action points a day instead of 6. You know the shortcuts.', bio: 'You ran packages across the rooftops for six years until a drone took the job. You still know which stairwells connect and which floors hold weight.' },
+  { id: 'digger', name: 'Crate digger', desc: 'A trained eye. Rarer finds from day one.', bio: 'You grew up in a record stall on the dry side and learned to read a sleeve before you could read a sign. Water damage, reissues and fakes do not get past you.' },
+  { id: 'hustler', name: 'Hustler', desc: 'Traders open 10% higher when you sell.', bio: 'You have sold things that did not exist to people who did not need them. The night market knows your face and, against its better judgement, likes it.' },
+  { id: 'heir', name: 'Tower dropout', desc: 'Start with 1,200 credits instead of 400. Everyone in the market knows your family.', bio: 'You walked out of the towers with a bag of credits and a name that opens doors you would rather it did not. Down here nobody cares who your mother is, but they do count your money.' },
 ];
 const NEWS = [
   { text: 'A tower influencer was photographed with a {item}. {cat} prices jump.', mult: 1.3 },
@@ -808,7 +885,7 @@ function renderTraders() {
     <div class="traders">${TRADERS.map(t => {
       const st = state.traders[t.id]; const locked = rank < t.unlock;
       return `<button class="trader ${locked ? 'locked' : ''}" data-act="open-trader" data-id="${t.id}" ${locked ? 'disabled' : ''}>
-        <h3>${esc(t.name)}</h3><div class="role">${esc(t.role)}</div>
+        <div class="trader-head">${av(t.avatar)}<div><h3>${esc(t.name)}</h3><div class="role">${esc(t.role)}</div></div></div>
         <div class="wants">${CAT_KEYS.filter(k => t.wants[k] && t.wants[k] !== 1).map(k => `<span class="chip ${t.wants[k] > 1 ? 'hot' : 'cold'}">${CATS[k].name} ×${t.wants[k]}</span>`).join('')}${t.minRarity ? `<span class="chip hot">${RARITY[t.minRarity].name}+ only</span>` : ''}</div>
         <div class="cash">${locked ? `Opens at ${RANKS[t.unlock].name}` : cr(st.cash) + ' in the box'}</div>
         <div class="muted" style="font-size:12px">Rep with you: ${st.rep}</div>
@@ -818,6 +895,7 @@ function renderTraders() {
   const t = traderDef(ui.trader), st = state.traders[t.id];
   const sellable = state.inv.filter(i => !(t.minRarity && i.r < t.minRarity));
   return `<div class="panel-head"><div><h2>${esc(t.name)}</h2><p>${esc(t.role)}. ${cr(st.cash)} in the box. Patience ${st.patience} round${st.patience === 1 ? '' : 's'}. Rep ${st.rep}.</p></div><button class="btn ghost" data-act="back-traders">← All traders</button></div>
+  <div class="bio">${av(t.avatar, 'lg')}<p>${esc(t.bio)}</p></div>
   <blockquote class="quote">${esc(t.lines.greet)}</blockquote>
   <div class="wants" style="margin-bottom:16px">${CAT_KEYS.map(k => `<span class="chip ${wantMult(t, k) > 1 ? 'hot' : wantMult(t, k) < 1 ? 'cold' : ''}">${CATS[k].name} ×${wantMult(t, k)}</span>`).join('')}</div>
   <div class="shop">
@@ -841,7 +919,7 @@ function renderHaggle() {
       <div class="row"><input type="number" id="haggle-input" min="1" placeholder="${h.mode === 'sell' ? 'Ask for more' : 'Offer less'}" style="flex:1" value="${Math.round(h.mode === 'sell' ? h.offer * 1.2 : h.offer * 0.85)}"><button class="btn" data-act="counter">Counter</button></div>
       <div class="row"><button class="btn amber" data-act="accept">${h.mode === 'sell' ? 'Accept ' + cr(h.offer) : 'Pay ' + cr(h.offer)}</button><button class="btn ghost" data-act="close">Walk away</button></div>`;
   }
-  openModal(`<h2>${h.mode === 'sell' ? 'Selling to' : 'Buying from'} ${esc(t.name)}</h2>
+  openModal(`<div class="trader-head">${av(t.avatar)}<h2>${h.mode === 'sell' ? 'Selling to' : 'Buying from'} ${esc(t.name)}</h2></div>
     ${item ? itemCard(item) : ''}
     <div class="row" style="justify-content:space-between"><span class="lbl">Rounds</span><div class="rounds">${rounds}</div></div>
     ${body}`);
@@ -859,7 +937,7 @@ function renderJobs() {
     else act = `<button class="btn sm amber" data-act="appraise" data-id="${j.id}">Appraise</button>`;
     const labels = { fetch: 'Fetch', bulk: 'Bulk lot', courier: 'Courier', appraise: 'Appraisal' };
     return `<div class="job ${j.taken ? 'taken' : ''}">
-      <div class="type">${labels[j.type]} · ${esc(g.name)}</div>
+      <div class="trader-head">${av(g.avatar, 'xs')}<div class="type">${labels[j.type]} · ${esc(g.name)}</div></div>
       <div>${esc(j.text)}</div>
       <div class="reward">${cr(j.reward)} + ${j.rep} rep</div>
       <div class="exp">${j.expires - state.day <= 0 ? 'Expires tonight' : `${j.expires - state.day} day${j.expires - state.day === 1 ? '' : 's'} left`}${j.taken ? ' · taken' : ''}</div>
@@ -891,7 +969,7 @@ function renderMarket() {
     return `<div class="mk"><div class="lbl" style="color:${CATS[k].color}">${CATS[k].name}</div><div class="idx ${dir}">${cur.toFixed(2)} ${dir === 'up' ? '▲' : dir === 'down' ? '▼' : ''}</div><div class="muted" style="font-size:12px">base ${CATS[k].base} cr</div>${spark([...h.slice(0, -1), cur])}</div>`;
   }).join('')}</div>
   <div class="section"><h3>News</h3><ul class="news">${state.news.map(n => `<li><b>Day ${n.day}</b> ${esc(n.text)}</li>`).join('')}</ul></div>
-  <div class="section"><h3>Picker</h3><p class="muted" style="margin:0 0 8px">${esc(state.name)}, ${BACKGROUNDS.find(b => b.id === state.bg).name.toLowerCase()}. ${state.finds} finds, ${state.deals} deals, Eye ${state.eye}. Next rank: ${rankIndex() < RANKS.length - 1 ? `${RANKS[rankIndex() + 1].name} at ${RANKS[rankIndex() + 1].rep} rep` : 'none, you are an Archivist'}.</p></div>
+  <div class="section"><h3>Picker</h3><div class="bio">${av(playerSpec(), 'lg')}<p><b style="color:var(--fg)">${esc(state.name)}</b>, ${BACKGROUNDS.find(b => b.id === state.bg).name.toLowerCase()}. ${esc(BACKGROUNDS.find(b => b.id === state.bg).bio)}<br><br>${state.finds} finds, ${state.deals} deals, Eye ${state.eye}. Next rank: ${rankIndex() < RANKS.length - 1 ? `${RANKS[rankIndex() + 1].name} at ${RANKS[rankIndex() + 1].rep} rep` : 'none, you are an Archivist'}.</p></div></div>
   <div class="section"><h3>Save</h3><p class="muted" style="margin:0 0 8px">The game saves itself in this browser after every action. Copy the text below to move it somewhere else.</p>
     <textarea id="save-out" readonly>${esc(JSON.stringify(state))}</textarea>
     <div class="row" style="margin-top:8px"><button class="btn sm" data-act="copy-save">Copy save</button></div>
@@ -902,6 +980,7 @@ function renderMarket() {
 }
 function render() {
   if (!state) return;
+  $('#hud-av').innerHTML = av(playerSpec(), 'sm');
   $('#hud-credits').textContent = cr(state.credits);
   $('#hud-ap').textContent = `${state.ap}/${state.apMax}`;
   $('#hud-day').textContent = state.day;
@@ -916,16 +995,22 @@ function render() {
 }
 function renderIntro() {
   ui.bg = ui.bg || 'courier';
+  if (!ui.faceSeed) ui.faceSeed = Math.floor(Math.random() * 1e9);
+  if (ui.face == null) ui.face = 0;
+  const faces = Array.from({ length: 6 }, (_, i) => randomSpec(ui.faceSeed + i * 7919));
   openModal(`<pre class="intro-art">ESTUARY · 2121 · TIDE OUT
  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  the towers kept the money.
  the water kept everything else.</pre>
     <h2>New picker</h2>
-    <p class="muted">You find things nobody has made in eighty years and sell them to people who cannot live without them. Pick a name and a past.</p>
+    <p class="muted">You find things nobody has made in eighty years and sell them to people who cannot live without them. Pick a name, a face and a past.</p>
     <label class="lbl" for="name-input">Handle</label>
     <input type="text" id="name-input" maxlength="24" placeholder="e.g. Salt" value="${esc(ui.name || '')}">
+    <div class="lbl">Face</div>
+    <div class="faces">${faces.map((f, i) => `<button class="face ${ui.face === i ? 'sel' : ''}" data-act="pick-face" data-id="${i}" aria-label="Face ${i + 1}">${av(f)}</button>`).join('')}<button class="btn sm ghost" data-act="more-faces">More faces</button></div>
     <div class="bgs">${BACKGROUNDS.map(b => `<button class="bg ${ui.bg === b.id ? 'sel' : ''}" data-act="pick-bg" data-id="${b.id}"><b>${b.name}</b><span>${b.desc}</span></button>`).join('')}</div>
     <div class="row"><button class="btn amber" data-act="start">Start digging</button></div>`);
+  ui.faces = faces;
   $('#name-input').focus();
 }
 
@@ -959,9 +1044,12 @@ document.addEventListener('click', e => {
     case 'do-appraise': doAppraise(el.dataset.job); break;
     case 'storage': buyStorage(); break;
     case 'pick-bg': ui.bg = id; ui.name = $('#name-input').value; renderIntro(); break;
+    case 'pick-face': ui.face = +id; ui.name = $('#name-input').value; renderIntro(); break;
+    case 'more-faces': ui.faceSeed = Math.floor(Math.random() * 1e9); ui.face = 0; ui.name = $('#name-input').value; renderIntro(); break;
     case 'start': {
       const name = ($('#name-input').value || '').trim() || 'Salt';
-      state = newState(name, ui.bg || 'courier'); log(`${name} walks into Estuary with ${cr(state.credits)}.`);
+      const face = (ui.faces && ui.faces[ui.face || 0]) || randomSpec(hashStr(name));
+      state = newState(name, ui.bg || 'courier'); state.avatar = face; log(`${name} walks into Estuary with ${cr(state.credits)}.`);
       closeModal(); commit(); break;
     }
     case 'copy-save': {
@@ -975,7 +1063,7 @@ document.addEventListener('click', e => {
       break;
     }
     case 'new-game-ask': openModal(`<h2>Start over?</h2><p>This wipes ${esc(state.name)}'s vault, credits and reputation. Copy the save first if you want it back.</p><div class="row"><button class="btn danger" data-act="new-game">Wipe and start over</button><button class="btn" data-act="close">Keep playing</button></div>`); break;
-    case 'new-game': try { localStorage.removeItem(SAVE_KEY); } catch (err) { /* ignore */ } state = null; ui = { tab: 'city', trader: null, haggle: null }; closeModal(); renderIntro(); break;
+    case 'new-game': try { localStorage.removeItem(SAVE_KEY); } catch (err) { /* ignore */ } state = null; ui = { tab: 'city', trader: null, haggle: null }; closeModal(); $('#hud-av').innerHTML = ''; renderIntro(); break;
   }
 });
 document.addEventListener('keydown', e => {
